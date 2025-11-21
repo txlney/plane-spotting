@@ -11,12 +11,13 @@ The following sections of the review cover the existing solutions, design trends
 ## 2. Existing Solutions :key:
 
 ### 2.1 FlightRadar24
-FlightRadar24 is used by most major airlines and others, such as Airbus and Boeing, in the aviation industry, with over 5 million users and 250,000 flights tracked per day *([Flightradar24, 2025](#references))*. It reliably provides real-time global coverage of aircraft via ADS-B, MLAT, and satellite data, and details a vast amount of information for every flight - such as aircraft model, route, altitude, and speed. In addition, its simple data visualisation features make it a very popular solution for everyone from hardcore aviation enthusiasts, to complete beginners.
+FlightRadar24 is used by thousands of hobbyists, most major airlines, and other companies - such as Airbus and Boeing - in the aviation industry, with over 5 million users and 250,000 flights tracked per day *([Flightradar24, 2025](#references))*. It reliably provides real-time global aircraft data using ADS-B receivers, MLAT, and satellite feeds, and details a vast amount of information for every flight - such as aircraft model, route, altitude, and speed. These data inputs are processed within FlightRadar24's data platform and exposed to users via its own proprietary interfaces, collectively known as FR24 API. In addition, its simple data visualisation features make it a very popular solution for everyone from hardcore aviation enthusiasts, to complete beginners.
 
 One drawback of this solution is how it is primarily focused on aircraft tracking and monitoring, rather than spotting and logging. The app lacks features such as a logbook, limiting its usefulness for users who want to maintain a personal collection. This highlights the need for my solution to be more oriented towards plane-spotters, where a logbook aspect can help prioritise collection management.
 Another disadvantage of FlightRadar24 is the number of features that are locked behind premium subscriptions, potentially discouraging new and casual hobbyists, underlining the need for a free alternative. Whilst this is a downside of this platform, it will have minimal effect on the design and functionality of my solution, this is because most of the hidden aspects are centred around aircraft tracking, such as historical flight data, which will not be necessary in my hobby-based application. Despite this, paywall subscriptions are still a drawback of an application, so I will avoid using them.
 
 ### 2.2 FlightAware
+FlightAware is another widely used application amongst flight trackers, also offering real-time data for both commercial and private aicraft. Similarly to FlightRadar24, it mostly uses ADS-B, MLAT, and radar information to gather its data, however, one key difference is the direct use of ATC data
 
 ### 2.3 ADS-B Exchange
 
