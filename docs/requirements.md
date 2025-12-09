@@ -14,7 +14,7 @@
 
 - **FR1:** Live Aircraft Map
   - The system should display a live map showing aircraft positions using ADS-B data.
-  - The system should update the map at regular intervals to be determined.
+  - The system should update the map at regular intervals. **TO BE DETERMINED**
   - Each aircraft marker should be clickable to display flight information.
   - Each aircraft on the map should include minimum: model, tail number, route, altitude, and speed.
 - **FR2:** Aircraft Logging
@@ -25,7 +25,7 @@
 - **FR3:** Collection Management
   - The system should provide a searchable/filterable display of the user's logged aircraft.
   - Filters should include: aircraft model/type, airline, and date of spotting.
-  - The system could include simple summary statistics, e.g. total aircraft spotted, airline spotted the most.
+  - The system could include simple summary statistics, e.g. total aircraft spotted, airline spotted the most. (secondary feature, added if there is time)
 - **FR4:** User Profiles
   - The system should allow users to create accounts and login.
   - The users information should be stored securely, with passwords hashed.
@@ -39,7 +39,7 @@
 
 - **Performance:**
   - The system should load the home page within 3 seconds on a standard connection.
-  - The aircraft map should update every X seconds.
+  - The aircraft map should update every X seconds. **TO BE DETERMINED**
 - **Security:**
   - User passwords should be hashed before storage.
   - The system should comply with GDPR for data handling.
@@ -54,7 +54,11 @@
  
 ## 5. System Architecture
 
-### 5.1: Decisions:
+### 5.1: Overview
+
+The system will follow a clear client-server architecture, with separation between the frontend, backend, and database. The frontend should provide an interactive UI for real-time aircraft viewing, logging, and collection management. The backend should handle the logic, API integration, and user profiles/authentication, whilst the database should securely store the user data and aircraft logs. The external flight data API should be gathered from OpenSky Network via RESTful API calls.
+
+### 5.2: Components
 
 - **Frontend: React**
   - I've decided to build the frontend using React for its component-based architecture and efficient rendering. This makes it ideal for my live aircraft map and responsive UI.
@@ -64,6 +68,39 @@
   - I will use PostgreSQL for my relational database to store user profiles, aircraft data and logs, etc., due to its scalability and advanced querying, which will be useful for filtering user collections.
 - **External API: OpenSky Network**
   - The system will use OpenSky Network for its ADS-B data, providing real-time flight data. It will be ideal for my project because it offers free, but limited, access.
+ 
+## 6. Constraints
 
-## NOTES
-- should the map be limited to a certain area? possibly easier to implement, need to gather ideas from potential users
+- API Limitations:
+  - OpenSky Network has rate limits, exact limits to be determined.
+  - ADS-B data will likely have delays and incomplete coverage in certain regions.
+  - ADS-B data will be missing for certain aircraft such as military or blocked flights.
+- Time and Resource Limitations:
+  - Deadline in May 2026 and one developer, may fall behind schedule.
+  - Scope must remain realistic, some features may not make it to final product.
+- Compliance Limitations:
+  - Must comply with GDPR for user data.
+  - Must comply with OpenSky Network API licensing terms - non-commercial only.
+
+## 7. Acceptance Criteria
+
+Each major feature can be considered as complete if they match the following criteria:
+
+- **FR1:** Live Aircraft Map
+  - The app loads and displays a live map of aircraft within 3 seconds on a standard connection.
+  - Aircraft markers on the map update every X seconds. **TO BE DETERMINED**
+  - Clicking on an aircraft marker displays flight details including model, tail number, altitude, and speed.
+- **FR2:** Aircraft Logging
+  - The user can log an aircraft with important information such as tail number, timestamp, etc.
+  - Logged entries appear in the users collection immediately after addition.
+  - The user is able to edit or delete an entry.
+- **FR3:** Collection Management
+  - The user can effectively search for aircraft by details such as tail number, and filter aircraft.
+  - The results display at least X entries per page. **TO BE DETERMINED**
+  - The collection page displays summary statistics (secondary feature).
+- **FR4:** User Profiles
+  - The user is able to register a profile, delete their profile, login, and logout securely.
+  - Passwords are properly hashed and stored.
+- **FR5:** Photo Upload (secondary feature)
+  - The user is able to upload a photo of maximum XMB size. **TO BE DETERMINED**
+  - The photo displays properly alongside the entry in the users collection.
