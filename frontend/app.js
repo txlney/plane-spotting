@@ -110,7 +110,7 @@ async function getRichDetails(hex) {
       <p><b>Airline:</b> ${data.airline_icao || "Unknown"}</p>
       <p><b>Model:</b> ${data.aircraft_icao || "N/A"}</p>
       <p><b>Registration:</b> ${data.reg_number || "N/A"}</p>
-      <p><b>From:</b> ${data.dep_iata || "N/A"}<b>To:</b> ${data.arr_iata || "N/A"}</p>
+      <p><b>From:</b> ${data.dep_iata || "N/A"} <b>To:</b> ${data.arr_iata || "N/A"}</p>
       `;
   } catch (error) {
     statusArea.innerHTML = "Could not load flight details.";
