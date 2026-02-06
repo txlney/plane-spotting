@@ -68,7 +68,7 @@ The system will follow a clear client-server architecture, with separation betwe
   - I will use PostgreSQL for my relational database to store user profiles, aircraft data and logs, etc., due to its scalability and advanced querying, which will be useful for filtering user collections.
 - **External API: OpenSky Network**
   - The system will use OpenSky Network for its ADS-B data, providing real-time flight data. It will be ideal for my project because it offers free, but limited, access.
- 
+
 ## 6. Constraints
 
 - API Limitations:

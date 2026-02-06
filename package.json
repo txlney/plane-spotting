@@ -12,5 +12,10 @@
     "axios": "^1.13.4",
     "dotenv": "^17.2.3",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.8.1",
+    "prettier-eslint": "^16.4.2"
   }
 }
