@@ -18,13 +18,9 @@ app.use(express.static("frontend"));
 
 app.get("/api/flights", async (req, res) => {
   try {
+    const { lamin, lomin, lamax, lomax } = req.query;
     const openskyUrl = "https://opensky-network.org/api/states/all";
-    const params = {
-      lamin: 49.0,
-      lomin: -8.0,
-      lamax: 59.0,
-      lomax: 2.0,
-    };
+    const params = { lamin, lomin, lamax, lomax };
 
     const auth = {
       username: process.env.OPENSKY_USERNAME,
