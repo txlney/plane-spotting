@@ -21,6 +21,30 @@
 
   <body>
     <h1>Aircraft Tracker</h1>
+
+    <section id="login-section">
+      <h3>Login</h3>
+      <input
+        type="text"
+        id="login-id"
+        placeholder="Username or Email"
+        required
+      />
+      <input type="password" id="login-pass" placeholder="Password" required />
+      <button id="login-btn">Login</button>
+    </section>
+
+    <section id="test-registration">
+      <h3>Test User Registration</h3>
+      <input type="text" id="reg-fname" placeholder="Forename" required />
+      <input type="text" id="reg-lname" placeholder="Surname" />
+      <input type="text" id="reg-user" placeholder="Username" required />
+      <input type="password" id="reg-pass" placeholder="Password" required />
+      <input type="email" id="reg-email" placeholder="Email Address" required />
+      <button id="register-test-btn">Create User</button>
+      <p id="reg-status"></p>
+    </section>
+
     <div id="map"></div>
     <div id="status-area"></div>
 
