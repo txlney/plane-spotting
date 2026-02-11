@@ -8,7 +8,46 @@ const planeIcon = L.icon({
   popupAnchor: [0, 0],
 });
 
+document.querySelector("#login-btn").addEventListener("click", userLogin);
+document.querySelector("#register-btn").addEventListener("click", userRegister);
+document.querySelector("#logout-btn").addEventListener("click", userLogout);
+
+function showView(viewId) {
+  document.querySelectorAll("section").forEach((s) => {
+    s.classList.add("hidden");
+  });
+
+  const target = document.querySelector(`#${viewId}`);
+  if (target) {
+    target.classList.remove("hidden");
+
+    if (viewId === "map-view" && map) {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+    }
+  }
+}
+window.showView = showView;
+
 window.addEventListener("DOMContentLoaded", () => {
+  const loggedIn = sessionStorage.getItem("userId");
+
+  if (loggedIn) {
+    console.log(sessionStorage.getItem("username"));
+    initMap();
+    document.querySelector("#main-nav").classList.remove("hidden");
+    document.querySelector("#logged-in-message").classList.remove("hidden");
+    showView("map-view");
+  } else {
+    showView("auth-view");
+  }
+});
+
+// Initiate live aircraft map
+function initMap() {
+  if (map) return;
+
   // disabled map controls to mitigate issue of limited API calls
   map = L.map("map", {
     dragging: false,
@@ -44,8 +83,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }).addTo(map);
 
   markerGroup = L.layerGroup().addTo(map);
-});
+}
 
+// Update map every 60 seconds (disabled temporarily)
 async function refreshFlights() {
   try {
     const bounds = map.getBounds();
@@ -88,6 +128,7 @@ async function refreshFlights() {
   }
 }
 
+// Get detailed flight info
 async function getRichDetails(hex, lat, lon, alt, callsign) {
   const statusArea = document.querySelector("#status-area");
   statusArea.innerHTML = "Fetching airline and model data...";
@@ -128,30 +169,67 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
   }
 }
 
-// TEST REGISTRATION
-document
-  .querySelector("#register-test-btn")
-  .addEventListener("click", async () => {
-    const userData = {
-      fName: document.querySelector("#reg-fname").value,
-      lName: document.querySelector("#reg-lname").value,
-      username: document.querySelector("#reg-user").value,
-      email: document.querySelector("#reg-email").value,
-      password: document.querySelector("#reg-pass").value,
-    };
+// User registration
+async function userRegister() {
+  const userData = {
+    fName: document.querySelector("#reg-fname").value,
+    lName: document.querySelector("#reg-lname").value,
+    username: document.querySelector("#reg-user").value,
+    email: document.querySelector("#reg-email").value,
+    password: document.querySelector("#reg-pass").value,
+  };
 
-    const response = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
-    });
-
-    const result = await response.json();
-    document.querySelector("#reg-status").innerText =
-      result.message || result.error;
+  const response = await fetch("/api/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userData),
   });
 
-// TEST SPOT LOGGING
+  const result = await response.json();
+  document.querySelector("#auth-status").innerText =
+    result.message || result.error;
+}
+
+// User login
+async function userLogin() {
+  const identifier = document.querySelector("#login-id").value;
+  const password = document.querySelector("#login-pass").value;
+
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    sessionStorage.setItem("userId", result.user.id);
+    sessionStorage.setItem("username", result.user.username);
+
+    initMap();
+
+    document.querySelector("#logged-in-message").classList.remove("hidden");
+    document.querySelector("#main-nav").classList.remove("hidden");
+    document.querySelector("#logged-in-message").innerText =
+      `Logged in as: ${result.user.fname}`;
+
+    showView("map-view");
+  } else {
+    document.querySelector("#logged-in-message").innerText = result.error;
+  }
+}
+
+// User logout
+function userLogout() {
+  sessionStorage.clear();
+  document.querySelector("#main-nav").classList.add("hidden");
+  document.querySelector("#logged-in-message").classList.add("hidden");
+  window.location.reload();
+  showView("auth-view");
+}
+
+// Log a spotted aircraft
 async function confirmSpot(hex, reg, airline) {
   const loggedInUserId = sessionStorage.getItem("userId");
 
@@ -175,30 +253,6 @@ async function confirmSpot(hex, reg, airline) {
   const result = await response.json();
   alert(result.message);
 }
-
-// TEST LOGIN
-document.querySelector("#login-btn").addEventListener("click", async () => {
-  const identifier = document.querySelector("#login-id").value;
-  const password = document.querySelector("#login-pass").value;
-
-  const response = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier, password }),
-  });
-
-  const result = await response.json();
-
-  if (response.ok) {
-    sessionStorage.setItem("userId", result.user.id);
-    sessionStorage.setItem("username", result.user.username);
-
-    document.querySelector("#logged-in-message").innerText =
-      `Logged in as: ${result.user.fname}`;
-  } else {
-    document.querySelector("#logged-in-message").innerText = result.error;
-  }
-});
 
 window.confirmSpot = confirmSpot;
 window.getRichDetails = getRichDetails;

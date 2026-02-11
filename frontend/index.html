@@ -20,33 +20,43 @@
   </head>
 
   <body>
-    <h1>Aircraft Tracker</h1>
+    <h1>Plane Spotter Hub</h1>
 
-    <section id="login-section">
-      <h3>Login</h3>
-      <input
-        type="text"
-        id="login-id"
-        placeholder="Username or Email"
-        required
-      />
-      <input type="password" id="login-pass" placeholder="Password" required />
-      <button id="login-btn">Login</button>
+    <nav id="main-nav" class="hidden">
+      <button onclick="showView('map-view')">Live Map</button>
+      <button onclick="showView('logbook-view')">Logbook</button>
+      <button id="logout-btn">Logout</button>
+    </nav>
+
+    <section id="auth-view">
+      <div id="login-form">
+        <h2>Login</h2>
+        <input type="text" id="login-id" placeholder="Username or Email" />
+        <input type="password" id="login-pass" placeholder="Password" />
+        <button id="login-btn">Login</button>
+      </div>
+      <p>OR</p>
+      <div id="register-form">
+        <h2>Register</h2>
+        <input type="text" id="reg-fname" placeholder="Forename" />
+        <input type="text" id="reg-lname" placeholder="Surname" />
+        <input type="email" id="reg-email" placeholder="Email Address" />
+        <input type="text" id="reg-user" placeholder="Username" />
+        <input type="password" id="reg-pass" placeholder="Password" />
+        <button id="register-btn">Create Account</button>
+      </div>
+      <p id="auth-status"></p>
     </section>
 
-    <section id="test-registration">
-      <h3>Test User Registration</h3>
-      <input type="text" id="reg-fname" placeholder="Forename" required />
-      <input type="text" id="reg-lname" placeholder="Surname" />
-      <input type="text" id="reg-user" placeholder="Username" required />
-      <input type="password" id="reg-pass" placeholder="Password" required />
-      <input type="email" id="reg-email" placeholder="Email Address" required />
-      <button id="register-test-btn">Create User</button>
-      <p id="reg-status"></p>
+    <section id="map-view" class="hidden">
+      <div id="map"></div>
+      <div id="status-area"></div>
     </section>
 
-    <div id="map"></div>
-    <div id="status-area"></div>
+    <section id="logbook-view" class="hidden">
+      <h2>My Logbook</h2>
+      <div id="logbook-list"></div>
+    </section>
 
     <script type="module" src="/app.js"></script>
   </body>

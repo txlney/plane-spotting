@@ -164,7 +164,7 @@ app.post("/api/login", async (req, res) => {
         message: "Login successful",
         user: {
           id: user.user_id,
-          username: user.username,
+          username: user.user_username,
           fname: user.user_fname,
         },
       });
