@@ -1,16 +1,13 @@
 let map;
 let markerGroup;
 let currentFlightData = null;
+let pendingRegistration = null;
 const planeIcon = L.icon({
   iconUrl: "img/airplane-svgrepo-com.svg",
   iconSize: [32, 32],
   iconAnchor: [16, 16],
   popupAnchor: [0, 0],
 });
-
-document.querySelector("#login-btn").addEventListener("click", userLogin);
-document.querySelector("#register-btn").addEventListener("click", userRegister);
-document.querySelector("#logout-btn").addEventListener("click", userLogout);
 
 function showView(viewId) {
   document.querySelectorAll("section").forEach((s) => {
@@ -30,17 +27,51 @@ function showView(viewId) {
 }
 window.showView = showView;
 
+document
+  .querySelector("#panel-close-btn")
+  .addEventListener("click", closePanel);
+
+document.querySelector("#login-btn").addEventListener("click", userLogin);
+document
+  .querySelector("#register-step1-btn")
+  .addEventListener("click", userRegisterStep1);
+document
+  .querySelector("#register-step2-btn")
+  .addEventListener("click", userRegisterStep2);
+document.querySelector("#logout-btn").addEventListener("click", userLogout);
+document
+  .querySelector("#create-account-page-btn")
+  .addEventListener("click", () => {
+    document.querySelector("#register-step1-status").innerText = "";
+    showView("register-step1-view");
+  });
+document.querySelector("#login-page-btn").addEventListener("click", () => {
+  document.querySelector("#login-status").innerText = "";
+  showView("login-view");
+});
+document
+  .querySelector("#complete-reg-back-btn")
+  .addEventListener("click", () => {
+    document.querySelector("#register-step1-status").innerText = "";
+    pendingRegistration = null;
+    showView("register-step1-view");
+  });
+
+// Check if user is logged in
 window.addEventListener("DOMContentLoaded", () => {
   const loggedIn = sessionStorage.getItem("userId");
 
   if (loggedIn) {
-    console.log(sessionStorage.getItem("username"));
+    const username = sessionStorage.getItem("username");
+    console.log(`Logged in as: ${username}`);
     initMap();
     document.querySelector("#main-nav").classList.remove("hidden");
     document.querySelector("#logged-in-message").classList.remove("hidden");
+    document.querySelector("#logged-in-message").innerText =
+      `Logged in as:  ${username}`;
     showView("map-view");
   } else {
-    showView("auth-view");
+    showView("login-view");
   }
 });
 
@@ -61,14 +92,15 @@ function initMap() {
 
   map.on("locationfound", (e) => {
     console.log("User location found.");
-    map.setView(e.latlng, 11);
+    map.setView(e.latlng, 12);
     refreshFlights();
     // setInterval(refreshFlights, 60000); TURN BACK ON - turned off to protect API limits
   });
 
   map.on("locationerror", (e) => {
     console.warn("Location access denied or failed. Using default location.");
-    map.setView([27.9759, -82.5033], 11); // tampa bay buccaneers facilities because i can
+    // map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
+    map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
     refreshFlights();
     // setInterval(refreshFlights, 60000); TURN BACK ON - turned off to protect API limits
   });
@@ -83,6 +115,16 @@ function initMap() {
   }).addTo(map);
 
   markerGroup = L.layerGroup().addTo(map);
+}
+
+// Open flight details panel
+function openPanel() {
+  document.querySelector("#status-area").classList.add("open");
+}
+
+// Close flight details panel
+function closePanel() {
+  document.querySelector("#status-area").classList.remove("open");
 }
 
 // Update map every 60 seconds (disabled temporarily)
@@ -130,8 +172,9 @@ async function refreshFlights() {
 
 // Get detailed flight info
 async function getRichDetails(hex, lat, lon, alt, callsign) {
-  const statusArea = document.querySelector("#status-area");
-  statusArea.innerHTML = "Fetching airline and model data...";
+  const panelBody = document.querySelector("#panel-body");
+  panelBody.innerHTML = "Fetching airline and model data...";
+  openPanel();
 
   try {
     const response = await fetch(`/api/plane-details/${hex}`);
@@ -142,7 +185,7 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
     currentFlightData = {
       hex: hex,
       reg: data.reg_number,
-      airline: data.airline_name,
+      airline: data.airline_icao,
       type: data.aircraft_icao,
       manufacturer: data.manufacturer,
       age: data.age,
@@ -153,41 +196,79 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
       alt: alt,
     };
 
-    statusArea.innerHTML = `
-      <h3>Spotting Details:</h3>
+    panelBody.innerHTML = `
       <p><b>Callsign:</b> ${callsign || "Unknown"}</p>
       <p><b>Airline:</b> ${data.airline_icao || "Unknown"}</p>
       <p><b>Model:</b> ${data.aircraft_icao || "N/A"}</p>
       <p><b>Registration:</b> ${data.reg_number || "N/A"}</p>
-      <p><b>From:</b> ${data.dep_iata || "N/A"} <b>To:</b> ${data.arr_iata || "N/A"}</p>
+      <p><b>From:</b> ${data.dep_iata || "N/A"}</p>
+      <p><b>To:</b> ${data.arr_iata || "N/A"}</p>
       <button onclick="confirmSpot('${hex}', '${data.reg_number}', '${data.airline_icao}')">
         Log Aircraft
       </button>
       `;
   } catch (error) {
-    statusArea.innerHTML = "Could not load flight details.";
+    panelBody.innerHTML = "Could not load flight details.";
   }
 }
 
-// User registration
-async function userRegister() {
-  const userData = {
-    fName: document.querySelector("#reg-fname").value,
-    lName: document.querySelector("#reg-lname").value,
-    username: document.querySelector("#reg-user").value,
-    email: document.querySelector("#reg-email").value,
-    password: document.querySelector("#reg-pass").value,
+// User registration (step 1)
+async function userRegisterStep1() {
+  const email = document.querySelector("#reg-email").value;
+  const password = document.querySelector("#reg-pass").value;
+
+  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+  if (!email || !password) {
+    document.querySelector("#register-step1-status").innerText =
+      "Please enter an email and password.";
+    return;
+  }
+  if (!emailRegex.test(email)) {
+    document.querySelector("#register-step1-status").innerText =
+      "Invalid email format.";
+    return;
+  }
+
+  pendingRegistration = { email, password };
+
+  document.querySelector("#register-step2-status").innerText = "";
+  showView("register-step2-view");
+}
+
+// User registration (step 2)
+async function userRegisterStep2() {
+  const fName = document.querySelector("#reg-fname").value;
+  const lName = document.querySelector("#reg-lname").value;
+  const username = document.querySelector("#reg-user").value;
+
+  if (!fName || !username) {
+    document.querySelector("#register-step2-status").innerText =
+      "Please enter your forename and a username.";
+    return;
+  }
+
+  const finalData = {
+    ...pendingRegistration,
+    fName,
+    lName,
+    username,
   };
 
   const response = await fetch("/api/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userData),
+    body: JSON.stringify(finalData),
   });
 
   const result = await response.json();
-  document.querySelector("#auth-status").innerText =
-    result.message || result.error;
+  if (response.ok) {
+    alert("Registration complete!\nPlease log in.");
+    pendingRegistration = null;
+    showView("login-view");
+  } else {
+    document.querySelector("#register-step2-status").innerText =
+      "Registration failed.";
+  }
 }
 
 // User login
@@ -216,7 +297,7 @@ async function userLogin() {
 
     showView("map-view");
   } else {
-    document.querySelector("#logged-in-message").innerText = result.error;
+    document.querySelector("#login-status").innerText = result.error;
   }
 }
 
@@ -226,7 +307,7 @@ function userLogout() {
   document.querySelector("#main-nav").classList.add("hidden");
   document.querySelector("#logged-in-message").classList.add("hidden");
   window.location.reload();
-  showView("auth-view");
+  showView("login-view");
 }
 
 // Log a spotted aircraft

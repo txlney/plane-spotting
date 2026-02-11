@@ -4,12 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, inital-scale=1.0" />
     <title>Plane Spotter Hub</title>
+    <link rel="icon" href="img/logo-white.png" />
     <link rel="stylesheet" href="styles.css" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet"
     />
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -20,41 +27,73 @@
   </head>
 
   <body>
-    <h1>Plane Spotter Hub</h1>
-
     <nav id="main-nav" class="hidden">
       <button onclick="showView('map-view')">Live Map</button>
       <button onclick="showView('logbook-view')">Logbook</button>
       <button id="logout-btn">Logout</button>
     </nav>
 
-    <section id="auth-view">
+    <section id="login-view" class="auth">
       <div id="login-form">
-        <h2>Login</h2>
+        <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
+        <h1>Welcome to <span class="skylog-name">SkyLog</span></h1>
         <input type="text" id="login-id" placeholder="Username or Email" />
         <input type="password" id="login-pass" placeholder="Password" />
-        <button id="login-btn">Login</button>
+        <p id="login-status"></p>
+        <button id="login-btn">Log in</button>
       </div>
-      <p>OR</p>
-      <div id="register-form">
-        <h2>Register</h2>
-        <input type="text" id="reg-fname" placeholder="Forename" />
-        <input type="text" id="reg-lname" placeholder="Surname" />
+      <p>or</p>
+      <button id="create-account-page-btn">Create an account</button>
+    </section>
+
+    <section id="register-step1-view" class="hidden auth">
+      <div id="register-step1-form">
+        <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
+        <h1>Register with <span class="skylog-name">SkyLog</span></h1>
         <input type="email" id="reg-email" placeholder="Email Address" />
-        <input type="text" id="reg-user" placeholder="Username" />
         <input type="password" id="reg-pass" placeholder="Password" />
-        <button id="register-btn">Create Account</button>
+        <p id="register-step1-status"></p>
+        <button id="register-step1-btn">Create account</button>
+      </div>
+      <label id="already-have-account" for="login-page-btn"
+        >Already have an account?</label
+      >
+      <button id="login-page-btn">Log in</button>
+    </section>
+
+    <section id="register-step2-view" class="hidden auth">
+      <div id="register-step2-form">
+        <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
+        <h1>Create your profile</h1>
+        <div class="input-row names">
+          <input type="text" id="reg-fname" placeholder="Forename" />
+          <input type="text" id="reg-lname" placeholder="Surname" />
+        </div>
+        <input type="text" id="reg-user" placeholder="Username" />
+        <p id="register-step2-status"></p>
+        <button id="register-step2-btn">Complete account</button>
       </div>
       <p id="auth-status"></p>
+      <button id="complete-reg-back-btn">Back</button>
     </section>
 
     <section id="map-view" class="hidden">
       <div id="map"></div>
-      <div id="status-area"></div>
+      <div id="status-area">
+        <div id="status-area-content">
+          <div id="panel-header">
+            <span>Flight Details</span>
+            <button id="panel-close-btn" aria-label="Close panel">
+              &#x2715;
+            </button>
+          </div>
+          <div id="panel-body"></div>
+        </div>
+      </div>
     </section>
 
     <section id="logbook-view" class="hidden">
-      <h2>My Logbook</h2>
+      <h1>My Logbook</h1>
       <div id="logbook-list"></div>
     </section>
 

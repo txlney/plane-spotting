@@ -132,16 +132,16 @@ app.post("/api/log-spot", async (req, res) => {
 
 // Register user into database & hash password
 app.post("/api/register", async (req, res) => {
-  const { fName, lName, username, email, password } = req.body;
+  const { email, password, fName, lName, username } = req.body;
   const saltRounds = 10;
   const hash = await bcrypt.hash(password, saltRounds);
 
   const sql = `
     INSERT INTO users
-      (user_fname, user_lname, user_username, user_email, user_pass_hash)
+      (user_email, user_pass_hash, user_fname, user_lname, user_username)
       VALUES (?, ?, ?, ?, ?)`;
 
-  db.run(sql, [fName, lName, username, email, hash], (error) => {
+  db.run(sql, [email, hash, fName, lName, username], (error) => {
     if (error)
       return res.status(400).json({ error: "Error with registration." });
     res.json({ message: "User registered successfully." });
