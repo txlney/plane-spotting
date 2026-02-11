@@ -14,13 +14,13 @@ const PORT = 8080;
 const db = new sqlite3.Database(path.join(__dirname, "spotting.db"));
 const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 
+dotenv.config({ path: path.join(__dirname, ".env") });
+
 db.exec(schema, (error) => {
   error
     ? console.error("Schema error:", error.message)
     : console.log("Database tables initialised.");
 });
-
-dotenv.config({ path: path.join(__dirname, ".env") });
 
 app.use(express.json());
 app.use(express.static("frontend"));
@@ -141,36 +141,69 @@ app.post("/api/register", async (req, res) => {
       (user_email, user_pass_hash, user_fname, user_lname, user_username)
       VALUES (?, ?, ?, ?, ?)`;
 
-  db.run(sql, [email, hash, fName, lName, username], (error) => {
-    if (error)
-      return res.status(400).json({ error: "Error with registration." });
-    res.json({ message: "User registered successfully." });
-  });
+  db.run(
+    sql,
+    [email.toLowerCase(), hash, fName, lName, username.toLowerCase()],
+    (error) => {
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ message: "User registered successfully." });
+    },
+  );
 });
 
 // User login
 app.post("/api/login", async (req, res) => {
   const { identifier, password } = req.body;
-  const sql = `SELECT * FROM users WHERE user_username = ? OR user_email = ?`;
+  const sql = `SELECT * FROM users WHERE LOWER(user_username) = ? OR LOWER(user_email) = ?`;
 
-  db.get(sql, [identifier, identifier], async (error, user) => {
+  db.get(
+    sql,
+    [identifier.toLowerCase(), identifier.toLowerCase()],
+    async (error, user) => {
+      if (error) return res.status(500).json({ error: "Database error" });
+      if (!user) return res.status(401).json({ error: "User not found" });
+
+      const match = await bcrypt.compare(password, user.user_pass_hash);
+
+      if (match) {
+        res.json({
+          message: "Login successful",
+          user: {
+            id: user.user_id,
+            username: user.user_username,
+            fname: user.user_fname,
+          },
+        });
+      } else {
+        res.status(401).json({ error: "Invalid password" });
+      }
+    },
+  );
+});
+
+// Check email availability
+app.get("/api/check-email-availability", (req, res) => {
+  const email = req.query.email;
+  const sql = `
+    SELECT user_email FROM users
+    WHERE LOWER(user_email) = LOWER(?)`;
+
+  db.get(sql, [email ?? null], (error, row) => {
     if (error) return res.status(500).json({ error: "Database error" });
-    if (!user) return res.status(401).json({ error: "User not found" });
+    res.json({ emailTaken: row ? true : false });
+  });
+});
 
-    const match = await bcrypt.compare(password, user.user_pass_hash);
+// Check username availability
+app.get("/api/check-username-availability", (req, res) => {
+  const username = req.query.username;
+  const sql = `
+    SELECT user_username FROM users
+    WHERE LOWER(user_username) = LOWER(?)`;
 
-    if (match) {
-      res.json({
-        message: "Login successful",
-        user: {
-          id: user.user_id,
-          username: user.user_username,
-          fname: user.user_fname,
-        },
-      });
-    } else {
-      res.status(401).json({ error: "Invalid password" });
-    }
+  db.get(sql, [username ?? null], (error, row) => {
+    if (error) return res.status(500).json({ error: "Database error" });
+    res.json({ usernameTaken: row ? true : false });
   });
 });
 

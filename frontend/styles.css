@@ -133,45 +133,39 @@ button {
   transition: all 0.2 ease;
 }
 
-#login-btn,
-#register-step1-btn,
-#register-step2-btn {
+.primary-btn {
   background-color: var(--green-btn-color);
   color: white;
   margin-top: 16px;
 }
 
-#login-btn:hover,
-#register-step1-btn:hover,
-#register-step2-btn:hover {
+.primary-btn:hover {
   background-color: #519184;
   transform: translateY(-1px);
 }
 
-#create-account-page-btn,
-#login-page-btn {
+.secondary-btn {
   background-color: var(--blue-btn-color);
   color: white;
 }
 
-#create-account-page-btn:hover,
-#login-page-btn:hover {
+.secondary-btn:hover {
   background-color: #7faaf5;
   transform: translateY(-1px);
 }
 
-#complete-reg-back-btn {
+.tertiary-btn {
   background-color: var(--light-bg-color);
   color: var(--dark-text-color);
   margin-top: 26px;
 }
 
-#complete-reg-back-btn:hover {
+.tertiary-btn:hover {
   transform: translateY(-1px);
 }
 
 .logo {
-  width: 120px;
+  width: 160px;
   height: auto;
   margin-bottom: 10px;
 }
@@ -231,6 +225,10 @@ button {
 #map {
   height: 100%;
   width: 100%;
+}
+
+.leaflet-control-layers {
+  z-index: 500;
 }
 
 #status-area {

@@ -2,9 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, inital-scale=1.0" />
-    <title>Plane Spotter Hub</title>
-    <link rel="icon" href="img/logo-white.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkyLog</title>
+    <link rel="icon" href="img/sl-text-blue-white.png" />
     <link rel="stylesheet" href="styles.css" />
     <link
       rel="stylesheet"
@@ -36,14 +36,16 @@
     <section id="login-view" class="auth">
       <div id="login-form">
         <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
-        <h1>Welcome to <span class="skylog-name">SkyLog</span></h1>
+        <h1>Sign in to <span class="skylog-name">SkyLog</span></h1>
         <input type="text" id="login-id" placeholder="Username or Email" />
         <input type="password" id="login-pass" placeholder="Password" />
         <p id="login-status"></p>
-        <button id="login-btn">Log in</button>
+        <button id="login-btn" class="primary-btn">Log in</button>
       </div>
       <p>or</p>
-      <button id="create-account-page-btn">Create an account</button>
+      <button id="create-account-page-btn" class="secondary-btn">
+        Create an account
+      </button>
     </section>
 
     <section id="register-step1-view" class="hidden auth">
@@ -53,12 +55,14 @@
         <input type="email" id="reg-email" placeholder="Email Address" />
         <input type="password" id="reg-pass" placeholder="Password" />
         <p id="register-step1-status"></p>
-        <button id="register-step1-btn">Create account</button>
+        <button id="register-step1-btn" class="primary-btn">
+          Create account
+        </button>
       </div>
       <label id="already-have-account" for="login-page-btn"
         >Already have an account?</label
       >
-      <button id="login-page-btn">Log in</button>
+      <button id="login-page-btn" class="secondary-btn">Log in</button>
     </section>
 
     <section id="register-step2-view" class="hidden auth">
@@ -71,10 +75,11 @@
         </div>
         <input type="text" id="reg-user" placeholder="Username" />
         <p id="register-step2-status"></p>
-        <button id="register-step2-btn">Complete account</button>
+        <button id="register-step2-btn" class="primary-btn">
+          Complete account
+        </button>
       </div>
-      <p id="auth-status"></p>
-      <button id="complete-reg-back-btn">Back</button>
+      <button id="complete-reg-back-btn" class="tertiary-btn">Back</button>
     </section>
 
     <section id="map-view" class="hidden">
@@ -97,10 +102,10 @@
       <div id="logbook-list"></div>
     </section>
 
+    <footer id="logged-in-message" class="hidden">
+      Logged in as: Unknown</span>
+    </footer>
+
     <script type="module" src="/app.js"></script>
   </body>
-
-  <footer id="logged-in-message" class="hidden">
-    Logged in as: <span id="username-display"></span>
-  </footer>
 </html>
