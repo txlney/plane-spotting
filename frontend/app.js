@@ -30,7 +30,6 @@ window.showView = showView;
 document
   .querySelector("#panel-close-btn")
   .addEventListener("click", closePanel);
-
 document.querySelector("#login-btn").addEventListener("click", userLogin);
 document
   .querySelector("#register-step1-btn")
@@ -57,7 +56,7 @@ document
     showView("register-step1-view");
   });
 
-// Check if user is logged in
+// Check if user is logged in on page load/reload
 window.addEventListener("DOMContentLoaded", () => {
   const loggedIn = sessionStorage.getItem("userId");
 

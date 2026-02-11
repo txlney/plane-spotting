@@ -169,7 +169,6 @@ app.post("/api/login", async (req, res) => {
         },
       });
     } else {
-      console.error("Login failed");
       res.status(401).json({ error: "Invalid password" });
     }
   });
