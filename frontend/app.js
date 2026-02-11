@@ -419,24 +419,14 @@ async function confirmSpot() {
                   EVENT LISTENERS
 ================================================ */
 
-document
-  .querySelector("#panel-close-btn")
-  .addEventListener("click", closePanel);
+document.querySelector("#panel-close-btn").addEventListener("click", closePanel);
 document.querySelector("#login-btn").addEventListener("click", userLogin);
-document
-  .querySelector("#register-step1-btn")
-  .addEventListener("click", userRegisterStep1);
-document
-  .querySelector("#register-step2-btn")
-  .addEventListener("click", userRegisterStep2);
+document.querySelector("#register-step1-btn").addEventListener("click", userRegisterStep1);
+document.querySelector("#register-step2-btn").addEventListener("click", userRegisterStep2);
 document.querySelector("#logout-btn").addEventListener("click", userLogout);
-document
-  .querySelector("#create-account-page-btn")
-  .addEventListener("click", goToAccountCreation);
+document.querySelector("#create-account-page-btn").addEventListener("click", goToAccountCreation);
 document.querySelector("#login-page-btn").addEventListener("click", goToLogin);
-document
-  .querySelector("#complete-reg-back-btn")
-  .addEventListener("click", () => {
+document.querySelector("#complete-reg-back-btn").addEventListener("click", () => {
     document.querySelector("#register-step1-status").innerText = "";
     pendingRegistration = null;
     showView("register-step1-view");
