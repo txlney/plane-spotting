@@ -1,11 +1,15 @@
 :root {
-  --dark-bg-color: #151f2d;
-  --light-text-color: #eae8e8;
-  --skylog-text-color: #749ee7;
-  --green-btn-color: #417b6f;
-  --blue-btn-color: #6b9bef;
+  --primary-bg-color: #3a5b8c;
+  --cream-color: #f0ebd7;
+  --highlight-blue-color: #79beee;
+  --highlight-blue-text-color: #1d314e;
+  --yellow-btn-color: #fdd173;
+  --yellow-btn-text-color: #5e4727;
+  --placeholder-text-color: #a4a192;
   --light-bg-color: #d1d1d1;
-  --dark-text-color: #333333;
+  --nav-bg-color: #264168;
+  --error-text-color: #e34b4b;
+  --sidebar-color: #1d314e;
 }
 
 .hidden {
@@ -30,8 +34,8 @@ body {
   align-items: center;
   min-height: 100vh;
   font-family: "Inter", sans-serif;
-  color: var(--light-text-color);
-  background-color: var(--dark-bg-color);
+  color: var(--cream-color);
+  background-color: var(--primary-bg-color);
   text-align: center;
 }
 
@@ -51,24 +55,19 @@ body {
 
 .auth h1 {
   font-size: 28px;
-  font-weight: 600;
-  margin: 30px 0 40px 0;
-}
-
-.auth h1 .skylog-name {
   font-weight: 700;
-  color: var(--skylog-text-color);
+  margin: 30px 0 40px 0;
 }
 
 .auth p {
   margin: 15px 0;
-  color: var(--light-text-color);
+  color: var(--cream-color);
   font-size: 14px;
 }
 
 .auth p #already-have-account {
   margin: 20px 0 10px 0;
-  color: var(--light-text-color);
+  color: var(--cream-color);
   font-size: 14px;
 }
 
@@ -85,11 +84,12 @@ input {
   border: none;
   height: 48px;
   width: 100%;
-  max-width: 450px;
+  max-width: 500px;
   padding: 0 20px;
   margin: 6px 0;
   border-radius: 8px;
-  background-color: var(--light-bg-color);
+  background-color: var(--cream-color);
+  color: var(--primary-bg-color);
   font-size: 15px;
   font-weight: 500;
   font-family: "Inter", sans-serif;
@@ -99,7 +99,7 @@ input {
   display: flex;
   gap: 8px;
   width: 100%;
-  max-width: 450px;
+  max-width: 500px;
   margin: 6px 0;
 }
 
@@ -110,57 +110,66 @@ input {
 }
 
 input::placeholder {
-  color: #888888;
+  color: var(--placeholder-text-color);
 }
 
 input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--skylog-text-color);
+  box-shadow: 0 0 0 2px var(--highlight-blue-color);
 }
 
 button {
-  background-color: var(--light-bg-color);
+  background-color: var(--cream-color);
+  color: var(--primary-bg-color);
   border: none;
   height: 48px;
   width: 100%;
-  max-width: 450px;
+  max-width: 500px;
   margin: 8px 0;
   border-radius: 8px;
   font-size: 15px;
   font-weight: 500;
   font-family: "Inter", sans-serif;
   cursor: pointer;
-  transition: all 0.2 ease;
+  transition: all 0.2s ease;
 }
 
 .primary-btn {
-  background-color: var(--green-btn-color);
-  color: white;
   margin-top: 16px;
 }
 
-.primary-btn:hover {
-  background-color: #519184;
-  transform: translateY(-1px);
-}
-
 .secondary-btn {
-  background-color: var(--blue-btn-color);
-  color: white;
-}
-
-.secondary-btn:hover {
-  background-color: #7faaf5;
-  transform: translateY(-1px);
+  height: 40px;
+  max-width: 350px;
 }
 
 .tertiary-btn {
-  background-color: var(--light-bg-color);
-  color: var(--dark-text-color);
-  margin-top: 26px;
+  height: 40px;
+  max-width: 350px;
+  margin-top: 55px;
 }
 
 .tertiary-btn:hover {
+  transform: translateY(-1px);
+}
+
+.blue-btn {
+  background-color: var(--highlight-blue-color);
+  color: var(--highlight-blue-text-color);
+}
+
+.blue-btn:hover {
+  background-color: #6cb3e6;
+  transform: translateY(-1px);
+}
+
+.yellow-btn {
+  background-color: var(--yellow-btn-color);
+  color: var(--yellow-btn-text-color);
+}
+
+.yellow-btn:hover {
+  background-color: #eec161;
   transform: translateY(-1px);
 }
 
@@ -173,7 +182,7 @@ button {
 #login-status,
 #register-step1-status,
 #register-step2-status {
-  color: #ff6b6b;
+  color: var(--error-text-color);
   font-size: 13px;
   min-height: 18px;
   margin: 8px 0;
@@ -183,7 +192,7 @@ button {
   margin-top: 20px;
   margin-bottom: 10px;
   font-size: 14px;
-  color: var(--light-text-color);
+  color: var(--cream-color);
 }
 
 /* =====================================================
@@ -195,7 +204,7 @@ button {
   top: 0;
   left: 0;
   right: 0;
-  background-color: #111924;
+  background-color: var(--nav-bg-color);
   padding: 15px 20px;
   display: flex;
   gap: 15px;
@@ -208,8 +217,8 @@ button {
   max-width: 150px;
   height: 40px;
   margin: 0;
-  background-color: var(--light-bg-color);
-  color: var(--dark-text-color);
+  background-color: var(--cream-color);
+  color: var(--primary-bg-color);
 }
 
 /* =====================================================
@@ -227,9 +236,9 @@ button {
   width: 100%;
 }
 
-.leaflet-control-layers {
-  z-index: 500;
-}
+/* =====================================================
+                    DETAILS SIDE PANEL
+===================================================== */
 
 #status-area {
   position: absolute;
@@ -237,7 +246,7 @@ button {
   right: 0;
   bottom: 0;
   width: 320px;
-  background-color: #1a2335;
+  background-color: var(--sidebar-color);
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   transform: translateX(100%);
   transition: transform 0.3s ease;
@@ -252,44 +261,131 @@ button {
 #status-area-content {
   width: 100%;
   height: 100%;
-  padding: 80px 20px 60px;
+  padding: 80px 24px 60px;
   overflow-y: auto;
   box-sizing: border-box;
 }
 
 #panel-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-weight: 600;
-  font-size: 15px;
+  position: relative;
+  margin-bottom: 0;
+  padding: 0 0 14px 0;
 }
 
 #panel-header-txt {
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 12px 0 10px 0;
 }
 
 #panel-close-btn {
-  width: 32px;
-  height: 32px;
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 28px;
+  height: 28px;
   min-width: unset;
   max-width: unset;
   padding: 0;
   margin: 0;
   background: transparent;
-  color: var(--light-text-color);
-  font-size: 16px;
+  color: var(--cream-color);
+  font-size: 14px;
   border-radius: 4px;
   line-height: 1;
+  opacity: 0.5;
 }
 
 #panel-close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.8;
+  background: transparent;
   transform: none;
+}
+
+/* =====================================================
+                      ROUTE DISPLAY
+===================================================== */
+
+.route-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 18px 0 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.route-airport {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.route-code {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--cream-color);
+  line-height: 1.1;
+}
+
+.route-city {
+  font-size: 12px;
+  color: var(--highlight-blue-color);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.route-arrow {
+  font-size: 22px;
+  color: var(--highlight-blue-color);
+  margin-bottom: 16px;
+}
+
+/* =====================================================
+                      DETAILS TABLE
+===================================================== */
+
+.details-table {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  font-size: 16px;
+}
+
+.details-label {
+  color: var(--cream-color);
+  font-weight: 600;
+}
+
+.details-value {
+  color: var(--cream-color);
+  text-align: right;
+}
+
+#log-aircraft-btn {
+  margin-top: 28px;
+  max-width: 100%;
+  height: 48px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+#details-error-message {
+  color: var(--highlight-blue-color);
 }
 
 #panel-body p {
@@ -302,13 +398,6 @@ button {
   font-size: 15px;
 }
 
-#panel-body button {
-  margin-top: 16px;
-  max-width: 100%;
-  background-color: var(--green-btn-color);
-  color: white;
-}
-
 /* =====================================================
                         FOOTER
 ===================================================== */
@@ -319,7 +408,7 @@ footer {
   left: 0;
   right: 0;
   padding: 10px;
-  background-color: #111924;
+  background-color: var(--nav-bg-color);
   font-size: 12px;
   z-index: 999;
 }
