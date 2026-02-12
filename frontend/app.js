@@ -26,7 +26,7 @@ function createPlaneIcon(color) {
 }
 
 const planeIcon = createPlaneIcon("#f9d01a");
-const planeIconSelected = createPlaneIcon("#E53935");
+const planeIconSelected = createPlaneIcon("#e86c33");
 
 function showView(viewId) {
   document.querySelectorAll("section").forEach((s) => {
@@ -107,7 +107,7 @@ function initMap() {
       minZoom: 0,
       maxZoom: 20,
       attribution:
-        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
       ext: "png",
     },
   );
@@ -117,13 +117,14 @@ function initMap() {
       minZoom: 0,
       maxZoom: 20,
       attribution:
-        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
       ext: "png",
     },
   );
 
   darkLayer.addTo(map);
   markerGroup = L.layerGroup().addTo(map);
+  map.on("click", closePanel);
 }
 
 // Open flight details panel
@@ -202,6 +203,7 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
     currentFlightData = {
       hex: hex,
       reg: data.reg_number,
+      callsign: callsign,
       airline: data.airline_icao,
       type: data.aircraft_icao,
       manufacturer: data.manufacturer,
@@ -214,21 +216,49 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
     };
 
     const airlineName = data.airline_name || data.airline_icao || "Unknown";
-    const depDisplay = data.dep_airport_name
-      ? `${data.dep_airport_name} (${data.dep_iata})`
-      : data.dep_iata || "N/A";
-    const arrDisplay = data.arr_airport_name
-      ? `${data.arr_airport_name} (${data.arr_iata})`
-      : data.arr_iata || "N/A";
+    const depCode = data.dep_iata || "N/A";
+    const arrCode = data.arr_iata || "N/A";
+    const depCountry = data.dep_country_code || "";
+    const arrCountry = data.arr_country_code || "";
+    const altFt = alt > 0 ? `${Math.round(alt * 3.281)}ft` : "N/A";
+    const speedKts = data.speed ? `${Math.round(data.speed * 0.54)}kts` : "N/A";
 
     panelHeader.innerText = `Flight ${callsign || "Details"}`;
     panelBody.innerHTML = `
-      <p><b>Airline:</b> ${airlineName}</p>
-      <p><b>Model:</b> ${data.aircraft_icao || "N/A"}</p>
-      <p><b>Registration:</b> ${data.reg_number || "N/A"}</p>
-      <p><b>From:</b> ${depDisplay}</p>
-      <p><b>To:</b> ${arrDisplay}</p>
-      <button id="log-aircraft-btn" class="primary-btn">
+      <div class="route-display">
+        <div class="route-airport">
+          <span class="route-code">${depCode}</span>
+          <span class="route-city">${depCountry}</span>
+        </div>
+        <span class="route-arrow">&rarr;</span>
+        <div class="route-airport">
+          <span class="route-code">${arrCode}</span>
+          <span class="route-city">${arrCountry}</span>
+        </div>
+      </div>
+      <div class="details-table">
+        <div class="details-row">
+          <span class="details-label">Airline:</span>
+          <span class="details-value">${airlineName}</span>
+        </div>
+        <div class="details-row">
+          <span class="details-label">Model:</span>
+          <span class="details-value">${data.aircraft_icao || "N/A"}</span>
+        </div>
+        <div class="details-row">
+          <span class="details-label">Reg Number:</span>
+          <span class="details-value">${data.reg_number || "N/A"}</span>
+        </div>
+        <div class="details-row">
+          <span class="details-label">Barometric Altitude:</span>
+          <span class="details-value">${altFt}</span>
+        </div>
+        <div class="details-row">
+          <span class="details-label">Ground Speed:</span>
+          <span class="details-value">${speedKts}</span>
+        </div>
+      </div>
+      <button id="log-aircraft-btn" class="blue-btn">
         Log Aircraft
       </button>
       `;
@@ -239,14 +269,48 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
         confirmSpot();
       });
   } catch (error) {
+    currentFlightData = {
+      hex: hex,
+      reg: null,
+      callsign: callsign,
+      airline: null,
+      type: null,
+      manufacturer: null,
+      age: null,
+      dep: null,
+      arr: null,
+      lat: lat,
+      lon: lon,
+      alt: alt,
+    };
     panelHeader.innerText = `Flight ${callsign || "Details"}`;
+    const fallbackAltFt = alt > 0 ? `${Math.round(alt * 3.281)}ft` : "N/A";
     panelBody.innerHTML = `
-      <p><b>ICAO24:</b> ${hex.toUpperCase() || "Unknown"}</p>
-      <p><b>Altitude:</b> ${alt > 0 ? alt : 0}m</p>
-      <button id="log-aircraft-btn" class="primary-btn">
+      <div class="route-display">
+        <span id="details-error-message">
+          Full commercial flight details are unavailable for this aircraft.
+        </span>
+      </div>
+      <div class="details-table">
+        <div class="details-row">
+          <span class="details-label">ICAO24:</span>
+          <span class="details-value">${hex.toUpperCase() || "Unknown"}</span>
+        </div>
+        <div class="details-row">
+          <span class="details-label">Barometric Altitude:</span>
+          <span class="details-value">${fallbackAltFt}</span>
+        </div>
+      </div>
+      <button id="log-aircraft-btn" class="blue-btn">
         Log Aircraft
       </button>
       `;
+      
+    document
+      .querySelector("#log-aircraft-btn")
+      .addEventListener("click", () => {
+        confirmSpot();
+      });
   }
 }
 
@@ -290,11 +354,6 @@ async function userRegisterStep1() {
     document.querySelector("#reg-pass").value = "";
     return;
   }
-  if (password.includes(" ")) {
-    regStatus.innerText = "Password cannot contain spaces.";
-    document.querySelector("#reg-pass").value = "";
-    return;
-  }
   if (!/^[A-Za-z0-9._\-]+$/.test(password)) {
     regStatus.innerText =
       "Password can only contain letters, numbers, and . _ - characters.";
@@ -303,14 +362,18 @@ async function userRegisterStep1() {
   }
 
   // check to see if email is taken
-  const check = await fetch(
-    `/api/check-email-availability?email=${encodeURIComponent(email)}`,
-  );
-  const availability = await check.json();
-  console.log(availability.emailTaken);
+  try {
+    const check = await fetch(
+      `/api/check-email-availability?email=${encodeURIComponent(email)}`,
+    );
+    const availability = await check.json();
 
-  if (availability.emailTaken) {
-    regStatus.innerText = "An account with that email already exists.";
+    if (availability.emailTaken) {
+      regStatus.innerText = "An account with that email already exists.";
+      return;
+    }
+  } catch (error) {
+    regStatus.innerText = "Something went wrong. Please try again.";
     return;
   }
 
@@ -333,13 +396,18 @@ async function userRegisterStep2() {
   }
 
   // check to see if username is taken
-  const check = await fetch(
-    `/api/check-username-availability?username=${encodeURIComponent(username)}`,
-  );
-  const availability = await check.json();
+  try {
+    const check = await fetch(
+      `/api/check-username-availability?username=${encodeURIComponent(username)}`,
+    );
+    const availability = await check.json();
 
-  if (availability.usernameTaken) {
-    regStatus.innerText = "Username already taken.";
+    if (availability.usernameTaken) {
+      regStatus.innerText = "Username already taken.";
+      return;
+    }
+  } catch (error) {
+    regStatus.innerText = "Something went wrong. Please try again.";
     return;
   }
 
@@ -358,6 +426,7 @@ async function userRegisterStep2() {
 
   const result = await response.json();
   if (response.ok) {
+    console.log(result.message);
     alert("Registration complete!\nPlease log in.");
     pendingRegistration = null;
     document.querySelector("#login-status").innerText = "";
