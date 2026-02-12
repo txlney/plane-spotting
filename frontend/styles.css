@@ -268,6 +268,11 @@ button {
   font-size: 15px;
 }
 
+#panel-header-txt {
+  font-weight: 600;
+  font-size: 16px;
+}
+
 #panel-close-btn {
   width: 32px;
   height: 32px;
