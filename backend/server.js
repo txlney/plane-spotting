@@ -37,12 +37,12 @@ function seedLookupTables() {
         });
         const airports = response.data.response;
         const stmt = db.prepare(`
-          INSERT OR IGNORE INTO airports (port_iata, port_icao, port_name, port_city, 
-          port_country_code) VALUES (?, ?, ?, ?, ?)`,
+          INSERT OR IGNORE INTO airports (port_iata, port_icao, port_name, port_country_code)
+          VALUES (?, ?, ?, ?)`,
         );
         for (const a of airports) {
           if (a.iata_code) {
-            stmt.run(a.iata_code, a.icao_code, a.name, a.city, a.country_code);
+            stmt.run(a.iata_code, a.icao_code, a.name, a.country_code);
           }
         }
         stmt.finalize(() => console.log(`Seeded ${airports.length} airports.`));
@@ -146,18 +146,18 @@ app.get("/api/plane-details/:hex", async (req, res) => {
         ? dbGet("SELECT airline_name FROM airlines WHERE airline_icao = ?", [flightInfo.airline_icao])
         : Promise.resolve(null),
       flightInfo.dep_iata
-        ? dbGet("SELECT port_name, port_city FROM airports WHERE port_iata = ?", [flightInfo.dep_iata])
+        ? dbGet("SELECT port_name, port_country_code FROM airports WHERE port_iata = ?", [flightInfo.dep_iata])
         : Promise.resolve(null),
       flightInfo.arr_iata
-        ? dbGet("SELECT port_name, port_city FROM airports WHERE port_iata = ?", [flightInfo.arr_iata])
+        ? dbGet("SELECT port_name, port_country_code FROM airports WHERE port_iata = ?", [flightInfo.arr_iata])
         : Promise.resolve(null),
     ]);
 
     flightInfo.airline_name = airline?.airline_name || null;
     flightInfo.dep_airport_name = depAirport?.port_name || null;
-    flightInfo.dep_city = depAirport?.port_city || null;
+    flightInfo.dep_country_code = depAirport?.port_country_code || null;
     flightInfo.arr_airport_name = arrAirport?.port_name || null;
-    flightInfo.arr_city = arrAirport?.port_city || null;
+    flightInfo.arr_country_code = arrAirport?.port_country_code || null;
 
     res.json(flightInfo);
 
@@ -173,6 +173,7 @@ app.post("/api/log-spot", async (req, res) => {
     user_id,
     hex,
     reg,
+    callsign,
     airline,
     type,
     manufacturer,
@@ -192,8 +193,8 @@ app.post("/api/log-spot", async (req, res) => {
 
   const logSql = `
     INSERT INTO logs
-      (user_id, air_icao24_hex, log_dep_iata, log_arr_iata, log_latitude, log_longitude, log_altitude, log_notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+      (user_id, air_icao24_hex, log_callsign, log_dep_iata, log_arr_iata, log_latitude, log_longitude, log_altitude, log_notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   try {
     db.serialize(() => {
@@ -201,7 +202,7 @@ app.post("/api/log-spot", async (req, res) => {
 
       db.run(
         logSql,
-        [user_id, hex, dep, arr, lat, lon, alt, notes],
+        [user_id, hex, callsign, dep, arr, lat, lon, alt, notes],
         function (error) {
           if (error) return res.status(500).json({ error: error.message });
           res.json({
@@ -276,7 +277,7 @@ app.get("/api/check-email-availability", (req, res) => {
 
   db.get(sql, [email ?? null], (error, row) => {
     if (error) return res.status(500).json({ error: "Database error" });
-    res.json({ emailTaken: row ? true : false });
+    res.json({ emailTaken: !!row });
   });
 });
 
