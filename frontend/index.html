@@ -35,51 +35,51 @@
 
     <section id="login-view" class="auth">
       <div id="login-form">
-        <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
-        <h1>Sign in to <span class="skylog-name">SkyLog</span></h1>
+        <img class="logo" src="img/logo-cream.png" alt="SkyLog logo" />
+        <h1>Welcome to <span class="skylog-name">SkyLog!</span></h1>
         <input type="text" id="login-id" placeholder="Username or Email" />
         <input type="password" id="login-pass" placeholder="Password" />
         <p id="login-status"></p>
-        <button id="login-btn" class="primary-btn">Log in</button>
+        <button id="login-btn" class="blue-btn primary-btn">Log in</button>
       </div>
       <p>or</p>
-      <button id="create-account-page-btn" class="secondary-btn">
+      <button id="create-account-page-btn" class="yellow-btn secondary-btn">
         Create an account
       </button>
     </section>
 
     <section id="register-step1-view" class="hidden auth">
       <div id="register-step1-form">
-        <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
-        <h1>Register with <span class="skylog-name">SkyLog</span></h1>
+        <img class="logo" src="img/logo-cream.png" alt="SkyLog logo" />
+        <h1>Let's create your <span class="skylog-name">SkyLog</span> account</h1>
         <input type="email" id="reg-email" placeholder="Email Address" />
         <input type="password" id="reg-pass" placeholder="Password" />
         <p id="register-step1-status"></p>
-        <button id="register-step1-btn" class="primary-btn">
-          Create account
+        <button id="register-step1-btn" class="yellow-btn primary-btn">
+          Create my account
         </button>
       </div>
       <label id="already-have-account" for="login-page-btn"
         >Already have an account?</label
       >
-      <button id="login-page-btn" class="secondary-btn">Log in</button>
+      <button id="login-page-btn" class="blue-btn secondary-btn">Log in</button>
     </section>
 
     <section id="register-step2-view" class="hidden auth">
       <div id="register-step2-form">
-        <img class="logo" src="img/logo-white.png" alt="SkyLog logo" />
-        <h1>Create your profile</h1>
+        <img class="logo" src="img/logo-cream.png" alt="SkyLog logo" />
+        <h1>Complete your registration</h1>
         <div class="input-row names">
           <input type="text" id="reg-fname" placeholder="Forename" />
           <input type="text" id="reg-lname" placeholder="Surname" />
         </div>
         <input type="text" id="reg-user" placeholder="Username" />
         <p id="register-step2-status"></p>
-        <button id="register-step2-btn" class="primary-btn">
-          Complete account
+        <button id="register-step2-btn" class="yellow-btn primary-btn">
+          Complete registration
         </button>
       </div>
-      <button id="complete-reg-back-btn" class="tertiary-btn">Back</button>
+      <button id="complete-reg-back-btn" class="blue-btn tertiary-btn">Back</button>
     </section>
 
     <section id="map-view" class="hidden">
@@ -102,8 +102,8 @@
       <div id="logbook-list"></div>
     </section>
 
-    <footer id="logged-in-message" class="hidden">
-      Logged in as: Unknown</span>
+    <footer class="hidden">
+      <p id="logged-in-message">Logged in as: Unknown</p>
     </footer>
 
     <script type="module" src="/app.js"></script>
