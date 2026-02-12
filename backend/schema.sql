@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
     user_pass_hash TEXT NOT NULL,
     user_pfp_url TEXT,
     user_joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    -- add constraints for email check
 );
 
 -- Airports
@@ -16,7 +15,6 @@ CREATE TABLE IF NOT EXISTS airports (
     port_iata TEXT PRIMARY KEY,
     port_icao TEXT,
     port_name TEXT NOT NULL,
-    port_city TEXT,
     port_country_code TEXT
 );
 
@@ -34,7 +32,6 @@ CREATE TABLE IF NOT EXISTS aircraft (
     air_reg TEXT UNIQUE,
     air_airline_icao TEXT,
     air_icao_type TEXT,
-    air_model_name TEXT,
     air_manufacturer TEXT,
     air_age INT,
     FOREIGN KEY (air_airline_icao) REFERENCES airlines(airline_icao)
@@ -46,6 +43,7 @@ CREATE TABLE IF NOT EXISTS logs (
     user_id INT NOT NULL,
     air_icao24_hex TEXT NOT NULL,
     log_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    log_callsign TEXT,
     log_dep_iata TEXT,
     log_arr_iata TEXT,
     log_latitude REAL,
