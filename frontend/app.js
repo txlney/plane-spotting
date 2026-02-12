@@ -91,8 +91,8 @@ function initMap() {
 
   map.on("locationerror", (e) => {
     console.warn("Location access denied or failed. Using default location.");
-    map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
-    // map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
+    // map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
+    map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
     refreshFlights();
     // setInterval(refreshFlights, 60000); TURN BACK ON - turned off to protect API limits
   });
@@ -189,6 +189,7 @@ async function refreshFlights() {
 // Get detailed flight info
 async function getRichDetails(hex, lat, lon, alt, callsign) {
   const panelBody = document.querySelector("#panel-body");
+  const panelHeader = document.querySelector("#panel-header-txt");
   panelBody.innerHTML = "Fetching airline and model data...";
   openPanel();
 
@@ -212,13 +213,21 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
       alt: alt,
     };
 
+    const airlineName = data.airline_name || data.airline_icao || "Unknown";
+    const depDisplay = data.dep_airport_name
+      ? `${data.dep_airport_name} (${data.dep_iata})`
+      : data.dep_iata || "N/A";
+    const arrDisplay = data.arr_airport_name
+      ? `${data.arr_airport_name} (${data.arr_iata})`
+      : data.arr_iata || "N/A";
+
+    panelHeader.innerText = `Flight ${callsign || "Details"}`;
     panelBody.innerHTML = `
-      <p><b>Callsign:</b> ${callsign || "Unknown"}</p>
-      <p><b>Airline:</b> ${data.airline_icao || "Unknown"}</p>
+      <p><b>Airline:</b> ${airlineName}</p>
       <p><b>Model:</b> ${data.aircraft_icao || "N/A"}</p>
       <p><b>Registration:</b> ${data.reg_number || "N/A"}</p>
-      <p><b>From:</b> ${data.dep_iata || "N/A"}</p>
-      <p><b>To:</b> ${data.arr_iata || "N/A"}</p>
+      <p><b>From:</b> ${depDisplay}</p>
+      <p><b>To:</b> ${arrDisplay}</p>
       <button id="log-aircraft-btn" class="primary-btn">
         Log Aircraft
       </button>
@@ -230,7 +239,14 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
         confirmSpot();
       });
   } catch (error) {
-    panelBody.innerHTML = "Could not load flight details.";
+    panelHeader.innerText = `Flight ${callsign || "Details"}`;
+    panelBody.innerHTML = `
+      <p><b>ICAO24:</b> ${hex.toUpperCase() || "Unknown"}</p>
+      <p><b>Altitude:</b> ${alt > 0 ? alt : 0}m</p>
+      <button id="log-aircraft-btn" class="primary-btn">
+        Log Aircraft
+      </button>
+      `;
   }
 }
 
