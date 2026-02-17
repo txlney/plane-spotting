@@ -19,16 +19,19 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 function dbGet(sql, params) {
   return new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => {
-      (err) ? reject(err) : resolve(row);
+      err ? reject(err) : resolve(row);
     });
   });
 }
 
 function seedLookupTables() {
   db.get("SELECT COUNT(*) AS count FROM airports", async (err, row) => {
-    if (err) return console.error("Error checking airports table:", err.message);
+    if (err)
+      return console.error("Error checking airports table:", err.message);
     if (row.count > 0) {
-      console.log(`Airports table already has ${row.count} rows, skipping seed.`);
+      console.log(
+        `Airports table already has ${row.count} rows, skipping seed.`,
+      );
     } else {
       console.log("Seeding airports table from AirLabs...");
       try {
@@ -38,8 +41,7 @@ function seedLookupTables() {
         const airports = response.data.response;
         const stmt = db.prepare(`
           INSERT OR IGNORE INTO airports (port_iata, port_icao, port_name, port_country_code)
-          VALUES (?, ?, ?, ?)`,
-        );
+          VALUES (?, ?, ?, ?)`);
         for (const a of airports) {
           if (a.iata_code) {
             stmt.run(a.iata_code, a.icao_code, a.name, a.country_code);
@@ -53,9 +55,12 @@ function seedLookupTables() {
   });
 
   db.get("SELECT COUNT(*) AS count FROM airlines", async (err, row) => {
-    if (err) return console.error("Error checking airlines table:", err.message);
+    if (err)
+      return console.error("Error checking airlines table:", err.message);
     if (row.count > 0) {
-      console.log(`Airlines table already has ${row.count} rows, skipping seed.`);
+      console.log(
+        `Airlines table already has ${row.count} rows, skipping seed.`,
+      );
     } else {
       console.log("Seeding airlines table from AirLabs...");
       try {
@@ -65,8 +70,7 @@ function seedLookupTables() {
         const airlines = await response.data.response;
         const stmt = db.prepare(`
           INSERT OR IGNORE INTO airlines (airline_icao, airline_iata, airline_name,  
-          airline_country_code) VALUES (?, ?, ?, ?)`,
-        );
+          airline_country_code) VALUES (?, ?, ?, ?)`);
         for (const a of airlines) {
           if (a.icao_code) {
             stmt.run(a.icao_code, a.iata_code, a.name, a.country_code);
@@ -143,13 +147,21 @@ app.get("/api/plane-details/:hex", async (req, res) => {
 
     const [airline, depAirport, arrAirport] = await Promise.all([
       flightInfo.airline_icao
-        ? dbGet("SELECT airline_name FROM airlines WHERE airline_icao = ?", [flightInfo.airline_icao])
+        ? dbGet("SELECT airline_name FROM airlines WHERE airline_icao = ?", [
+            flightInfo.airline_icao,
+          ])
         : Promise.resolve(null),
       flightInfo.dep_iata
-        ? dbGet("SELECT port_name, port_country_code FROM airports WHERE port_iata = ?", [flightInfo.dep_iata])
+        ? dbGet(
+            "SELECT port_name, port_country_code FROM airports WHERE port_iata = ?",
+            [flightInfo.dep_iata],
+          )
         : Promise.resolve(null),
       flightInfo.arr_iata
-        ? dbGet("SELECT port_name, port_country_code FROM airports WHERE port_iata = ?", [flightInfo.arr_iata])
+        ? dbGet(
+            "SELECT port_name, port_country_code FROM airports WHERE port_iata = ?",
+            [flightInfo.arr_iata],
+          )
         : Promise.resolve(null),
     ]);
 
@@ -160,7 +172,6 @@ app.get("/api/plane-details/:hex", async (req, res) => {
     flightInfo.arr_country_code = arrAirport?.port_country_code || null;
 
     res.json(flightInfo);
-
   } catch (error) {
     console.error("Airlabs Error:", error.message);
     res.status(500).json({ error: "Failed to fetch rich aircraft data" });
@@ -206,7 +217,7 @@ app.post("/api/log-spot", async (req, res) => {
         function (error) {
           if (error) return res.status(500).json({ error: error.message });
           res.json({
-            message: "Aircraft spotted and logged.",  // Need to implement user notes rather than hard coded
+            message: "Aircraft spotted and logged.", // Need to implement user notes rather than hard coded
             logId: this.lastID,
           });
         },
@@ -215,6 +226,43 @@ app.post("/api/log-spot", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Database transaction failed" });
   }
+});
+
+// Get all user logged spots
+app.get("/api/logbook", (req, res) => {
+  const { userId, sort } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
+  }
+
+  const order = sort === "asc" ? "ASC" : "DESC";
+
+  const sql = `
+    SELECT
+      l.log_id,
+      l.log_timestamp,
+      l.log_callsign,
+      l.log_dep_iata,
+      l.log_arr_iata,
+      a.air_reg,
+      a.air_icao_type,
+      a.air_manufacturer,
+      al.airline_name,
+      dep_p.port_name AS dep_name,
+      arr_p.port_name AS arr_name
+    FROM logs l
+    LEFT JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+    LEFT JOIN airlines al ON a.air_airline_icao = al.airline_icao
+    LEFT JOIN airports dep_p ON l.log_dep_iata = dep_p.port_iata
+    LEFT JOIN airports arr_p ON l.log_arr_iata = arr_p.port_iata
+    WHERE l.user_id = ?
+    ORDER BY l.log_timestamp ${order}`;
+
+  db.all(sql, [userId], (error, rows) => {
+    if (error) return res.status(500).json({ error: "Database error" });
+    res.json({ logs: rows });
+  });
 });
 
 // Register user into database & hash password
