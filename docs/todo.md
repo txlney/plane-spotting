@@ -27,3 +27,7 @@
 ## Profile Settings Page
 
 - Upload/edit profile photo?
+
+## Advanced Future Changes/Fixes
+
+- Backend API security (e.g. verify user before deleting acc)
