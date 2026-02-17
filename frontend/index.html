@@ -33,7 +33,11 @@
     <nav id="main-nav" class="hidden">
       <div class="nav-group nav-top">
         <button class="nav-btn" id="nav-map" aria-label="Map" title="Map">
-          ✈
+          <img
+            src="img/signal-svgrepo-com.svg"
+            alt="Live Map Icon"
+            class="nav-icon"
+          />
         </button>
         <button
           class="nav-btn"
@@ -41,7 +45,11 @@
           aria-label="Logbook"
           title="Logbook"
         >
-          ☰
+          <img
+            src="img/encyclopedia-svgrepo-com.svg"
+            alt="Logbook Icon"
+            class="nav-icon"
+          />
         </button>
         <button
           class="nav-btn"
@@ -49,7 +57,11 @@
           aria-label="Statistics"
           title="Statistics"
         >
-          ◈
+          <img
+            src="img/chart-pie-svgrepo-com.svg"
+            alt="Statistics Icon"
+            class="nav-icon"
+          />
         </button>
       </div>
       <div class="nav-group nav-bottom">
@@ -59,7 +71,11 @@
           aria-label="Settings"
           title="Settings"
         >
-          ⚙
+          <img
+            src="img/settings-svgrepo-com.svg"
+            alt="Settings Icon"
+            class="nav-icon"
+          />
         </button>
         <button
           class="nav-btn"
@@ -67,20 +83,22 @@
           aria-label="Profile"
           title="Profile"
         >
-          ⊙
+          <img
+            src="img/user-svgrepo-com.svg"
+            alt="Profile Icon"
+            class="nav-icon"
+          />
         </button>
       </div>
     </nav>
 
-    <button
-      id="mobile-profile-btn"
-      class="hidden"
-      aria-label="Profile"
-      title="Profile"
-    >
-      ⊙
+    <button id="mobile-profile-btn" class="hidden" aria-label="Profile">
+      <img
+        src="img/user-svgrepo-com.svg"
+        alt="Profile Icon"
+        class="mobile-profile-icon"
+      />
     </button>
-    <button id="logout-btn" class="hidden"></button>
 
     <section id="login-view" class="auth">
       <div id="login-form">
@@ -158,6 +176,109 @@
         </button>
       </div>
       <div id="logbook-grid" class="logbook-grid"></div>
+    </section>
+
+    <section id="settings-view" class="hidden">
+      <div class="settings-header">
+        <h1>Application Settings</h1>
+      </div>
+    </section>
+
+    <section id="profile-view" class="hidden">
+      <div class="profile-container">
+        <div class="profile-header">
+          <h1 id="profile-header-msg">User</h1>
+        </div>
+
+        <div class="profile-row">
+          <div id="profile-details-section" class="profile-card">
+            <div class="profile-detail-header">
+              <h2 class="profile-section-title">My Profile</h2>
+              <button id="profile-edit-btn" class="blue-btn profile-header-btn">
+                ✎
+              </button>
+            </div>
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Name</span>
+              <span class="profile-detail-value" id="profile-name">—</span>
+            </div>
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Username</span>
+              <span class="profile-detail-value" id="profile-username">—</span>
+            </div>
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Email</span>
+              <span class="profile-detail-value" id="profile-email">—</span>
+            </div>
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Member since</span>
+              <span class="profile-detail-value" id="profile-joined">—</span>
+            </div>
+          </div>
+
+          <div id="profile-edit-section" class="profile-card hidden">
+            <div class="profile-detail-header">
+              <h2 class="profile-section-title">Edit Profile</h2>
+              <button
+                id="profile-edit-cancel-btn"
+                class="blue-btn profile-header-btn"
+              >
+                Cancel
+              </button>
+            </div>
+            <div class="input-row names">
+              <input
+                type="text"
+                id="profile-edit-fname"
+                placeholder="First name"
+              />
+              <input
+                type="text"
+                id="profile-edit-lname"
+                placeholder="Last name"
+              />
+            </div>
+            <input
+              type="text"
+              id="profile-edit-username"
+              placeholder="Username"
+            />
+            <p id="profile-edit-status"></p>
+            <button id="profile-save-btn" class="yellow-btn primary-btn">
+              Save changes
+            </button>
+          </div>
+
+          <div class="profile-card">
+            <h2 class="profile-section-title">Change Password</h2>
+            <input
+              type="password"
+              id="profile-current-pass"
+              placeholder="Current password"
+            />
+            <input
+              type="password"
+              id="profile-new-pass"
+              placeholder="New password"
+            />
+            <input
+              type="password"
+              id="profile-confirm-pass"
+              placeholder="Confirm new password"
+            />
+            <p id="profile-pass-status"></p>
+            <button id="profile-pass-btn" class="blue-btn primary-btn">
+              Change password
+            </button>
+          </div>
+        </div>
+
+        <button id="mobile-settings-btn" class="blue-btn primary-btn">
+          App Settings
+        </button>
+        <button id="logout-btn" class="logout-btn">Log out</button>
+        <button id="delete-btn" class="delete-btn">Delete Account</button>
+      </div>
     </section>
 
     <footer class="hidden">
