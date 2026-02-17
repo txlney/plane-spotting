@@ -3,6 +3,7 @@ let markerGroup;
 let currentFlightData = null;
 let pendingRegistration = null;
 let selectedMarker = null;
+let logbookSort = "desc";
 
 const PLANE_SVG_PATH = `M511.06,286.261c-0.387-10.849-7.42-20.615-18.226-25.356l-193.947-74.094
   C298.658,78.15,285.367,3.228,256.001,3.228c-29.366,0-42.657,74.922-42.885,183.583L19.167,260.904
@@ -28,6 +29,14 @@ function createPlaneIcon(color) {
 const planeIcon = createPlaneIcon("#f9d01a");
 const planeIconSelected = createPlaneIcon("#e86c33");
 
+const navViewMap = {
+  "map-view": "nav-map",
+  "logbook-view": "nav-logbook",
+  "statistics-view": "nav-stats",
+  "settings-view": "nav-settings",
+  "profile-view": "nav-profile",
+};
+
 function showView(viewId) {
   document.querySelectorAll("section").forEach((s) => {
     s.classList.add("hidden");
@@ -42,7 +51,17 @@ function showView(viewId) {
         map.invalidateSize();
       }, 100);
     }
+
+    if (viewId === "logbook-view") {
+      loadLogbook();
+    }
   }
+
+  document
+    .querySelectorAll(".nav-btn")
+    .forEach((btn) => btn.classList.remove("active"));
+  const activeBtn = document.querySelector(`#${navViewMap[viewId]}`);
+  if (activeBtn) activeBtn.classList.add("active");
 }
 window.showView = showView;
 
@@ -52,12 +71,14 @@ window.addEventListener("DOMContentLoaded", () => {
 
   if (loggedIn) {
     const username = sessionStorage.getItem("username");
+    const fName = sessionStorage.getItem("userFName");
     console.log(`Logged in as: ${username}`);
     initMap();
     document.querySelector("#main-nav").classList.remove("hidden");
-    document.querySelector("#logged-in-message").classList.remove("hidden");
+    document.querySelector("#mobile-profile-btn").classList.remove("hidden");
+    document.querySelector("footer").classList.remove("hidden");
     document.querySelector("#logged-in-message").innerText =
-      `Logged in as:  ${username}`;
+      `Logged in as:  ${fName}`;
     showView("map-view");
   } else {
     showView("login-view");
@@ -66,6 +87,178 @@ window.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#login-pass").value = "";
   }
 });
+
+/* ================================================
+                  AUTHENTICATION
+================================================ */
+
+// Direct user to Create Account page
+function goToAccountCreation() {
+  document.querySelector("#register-step1-status").innerText = "";
+  document.querySelector("#reg-email").value = "";
+  document.querySelector("#reg-pass").value = "";
+  showView("register-step1-view");
+}
+
+// Direct user to Login page
+function goToLogin() {
+  document.querySelector("#login-status").innerText = "";
+  document.querySelector("#login-id").value = "";
+  document.querySelector("#login-pass").value = "";
+  showView("login-view");
+}
+
+// User registration (step 1)
+async function userRegisterStep1() {
+  document.querySelector("#reg-fname").value = "";
+  document.querySelector("#reg-lname").value = "";
+  document.querySelector("#reg-user").value = "";
+
+  const email = document.querySelector("#reg-email").value;
+  const password = document.querySelector("#reg-pass").value;
+  const regStatus = document.querySelector("#register-step1-status");
+
+  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+  if (!email || !password) {
+    regStatus.innerText = "Please enter an email and password.";
+    return;
+  }
+  if (!emailRegex.test(email)) {
+    regStatus.innerText = "Invalid email format.";
+    return;
+  }
+  if (password.length < 5) {
+    regStatus.innerText = "Password must be at least 5 characters long.";
+    document.querySelector("#reg-pass").value = "";
+    return;
+  }
+  if (!/^[A-Za-z0-9._\-]+$/.test(password)) {
+    regStatus.innerText =
+      "Password can only contain letters, numbers, and . _ - characters.";
+    document.querySelector("#reg-pass").value = "";
+    return;
+  }
+
+  // check to see if email is taken
+  try {
+    const check = await fetch(
+      `/api/check-email-availability?email=${encodeURIComponent(email)}`,
+    );
+    const availability = await check.json();
+
+    if (availability.emailTaken) {
+      regStatus.innerText = "An account with that email already exists.";
+      return;
+    }
+  } catch (error) {
+    regStatus.innerText = "Something went wrong. Please try again.";
+    return;
+  }
+
+  pendingRegistration = { email, password };
+
+  document.querySelector("#register-step2-status").innerText = "";
+  showView("register-step2-view");
+}
+
+// User registration (step 2)
+async function userRegisterStep2() {
+  const fName = document.querySelector("#reg-fname").value;
+  const lName = document.querySelector("#reg-lname").value;
+  const username = document.querySelector("#reg-user").value;
+  const regStatus = document.querySelector("#register-step2-status");
+
+  if (!fName || !username) {
+    regStatus.innerText = "Please enter your forename and a username.";
+    return;
+  }
+
+  // check to see if username is taken
+  try {
+    const check = await fetch(
+      `/api/check-username-availability?username=${encodeURIComponent(username)}`,
+    );
+    const availability = await check.json();
+
+    if (availability.usernameTaken) {
+      regStatus.innerText = "Username already taken.";
+      return;
+    }
+  } catch (error) {
+    regStatus.innerText = "Something went wrong. Please try again.";
+    return;
+  }
+
+  const finalData = {
+    ...pendingRegistration,
+    fName,
+    lName,
+    username,
+  };
+
+  const response = await fetch("/api/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(finalData),
+  });
+
+  const result = await response.json();
+  if (response.ok) {
+    console.log(result.message);
+    alert("Registration complete!\nPlease log in.");
+    pendingRegistration = null;
+    document.querySelector("#login-status").innerText = "";
+    showView("login-view");
+  } else {
+    document.querySelector("#register-step2-status").innerText =
+      "Registration failed. Please try again.";
+  }
+}
+
+// User login
+async function userLogin() {
+  const identifier = document.querySelector("#login-id").value;
+  const password = document.querySelector("#login-pass").value;
+
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    sessionStorage.setItem("userId", result.user.id);
+    sessionStorage.setItem("username", result.user.username);
+    sessionStorage.setItem("userFName", result.user.fname);
+
+    initMap();
+
+    document.querySelector("footer").classList.remove("hidden");
+    document.querySelector("#main-nav").classList.remove("hidden");
+    document.querySelector("#mobile-profile-btn").classList.remove("hidden");
+    document.querySelector("#logged-in-message").innerText =
+      `Logged in as: ${result.user.fname}`;
+
+    showView("map-view");
+  } else {
+    document.querySelector("#login-status").innerText = result.error;
+  }
+}
+
+// User logout
+function userLogout() {
+  sessionStorage.clear();
+  document.querySelector("#main-nav").classList.add("hidden");
+  document.querySelector("#mobile-profile-btn").classList.add("hidden");
+  document.querySelector("footer").classList.add("hidden");
+  window.location.reload();
+}
+
+/* ================================================
+                      MAP
+================================================ */
 
 // Initiate live aircraft map
 function initMap() {
@@ -106,8 +299,6 @@ function initMap() {
     {
       minZoom: 0,
       maxZoom: 20,
-      attribution:
-        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
       ext: "png",
     },
   );
@@ -116,8 +307,6 @@ function initMap() {
     {
       minZoom: 0,
       maxZoom: 20,
-      attribution:
-        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
       ext: "png",
     },
   );
@@ -305,174 +494,13 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
         Log Aircraft
       </button>
       `;
-      
+
     document
       .querySelector("#log-aircraft-btn")
       .addEventListener("click", () => {
         confirmSpot();
       });
   }
-}
-
-// Direct user to Create Account page
-function goToAccountCreation() {
-  document.querySelector("#register-step1-status").innerText = "";
-  document.querySelector("#reg-email").value = "";
-  document.querySelector("#reg-pass").value = "";
-  showView("register-step1-view");
-}
-
-// Direct user to Login page
-function goToLogin() {
-  document.querySelector("#login-status").innerText = "";
-  document.querySelector("#login-id").value = "";
-  document.querySelector("#login-pass").value = "";
-  showView("login-view");
-}
-
-// User registration (step 1)
-async function userRegisterStep1() {
-  document.querySelector("#reg-fname").value = "";
-  document.querySelector("#reg-lname").value = "";
-  document.querySelector("#reg-user").value = "";
-
-  const email = document.querySelector("#reg-email").value;
-  const password = document.querySelector("#reg-pass").value;
-  const regStatus = document.querySelector("#register-step1-status");
-
-  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
-  if (!email || !password) {
-    regStatus.innerText = "Please enter an email and password.";
-    return;
-  }
-  if (!emailRegex.test(email)) {
-    regStatus.innerText = "Invalid email format.";
-    return;
-  }
-  if (password.length < 5) {
-    regStatus.innerText = "Password must be at least 5 characters long.";
-    document.querySelector("#reg-pass").value = "";
-    return;
-  }
-  if (!/^[A-Za-z0-9._\-]+$/.test(password)) {
-    regStatus.innerText =
-      "Password can only contain letters, numbers, and . _ - characters.";
-    document.querySelector("#reg-pass").value = "";
-    return;
-  }
-
-  // check to see if email is taken
-  try {
-    const check = await fetch(
-      `/api/check-email-availability?email=${encodeURIComponent(email)}`,
-    );
-    const availability = await check.json();
-
-    if (availability.emailTaken) {
-      regStatus.innerText = "An account with that email already exists.";
-      return;
-    }
-  } catch (error) {
-    regStatus.innerText = "Something went wrong. Please try again.";
-    return;
-  }
-
-  pendingRegistration = { email, password };
-
-  document.querySelector("#register-step2-status").innerText = "";
-  showView("register-step2-view");
-}
-
-// User registration (step 2)
-async function userRegisterStep2() {
-  const fName = document.querySelector("#reg-fname").value;
-  const lName = document.querySelector("#reg-lname").value;
-  const username = document.querySelector("#reg-user").value;
-  const regStatus = document.querySelector("#register-step2-status");
-
-  if (!fName || !username) {
-    regStatus.innerText = "Please enter your forename and a username.";
-    return;
-  }
-
-  // check to see if username is taken
-  try {
-    const check = await fetch(
-      `/api/check-username-availability?username=${encodeURIComponent(username)}`,
-    );
-    const availability = await check.json();
-
-    if (availability.usernameTaken) {
-      regStatus.innerText = "Username already taken.";
-      return;
-    }
-  } catch (error) {
-    regStatus.innerText = "Something went wrong. Please try again.";
-    return;
-  }
-
-  const finalData = {
-    ...pendingRegistration,
-    fName,
-    lName,
-    username,
-  };
-
-  const response = await fetch("/api/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(finalData),
-  });
-
-  const result = await response.json();
-  if (response.ok) {
-    console.log(result.message);
-    alert("Registration complete!\nPlease log in.");
-    pendingRegistration = null;
-    document.querySelector("#login-status").innerText = "";
-    showView("login-view");
-  } else {
-    document.querySelector("#register-step2-status").innerText =
-      "Registration failed. Please try again.";
-  }
-}
-
-// User login
-async function userLogin() {
-  const identifier = document.querySelector("#login-id").value;
-  const password = document.querySelector("#login-pass").value;
-
-  const response = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier, password }),
-  });
-
-  const result = await response.json();
-
-  if (response.ok) {
-    sessionStorage.setItem("userId", result.user.id);
-    sessionStorage.setItem("username", result.user.username);
-
-    initMap();
-
-    document.querySelector("#logged-in-message").classList.remove("hidden");
-    document.querySelector("#main-nav").classList.remove("hidden");
-    document.querySelector("#logged-in-message").innerText =
-      `Logged in as: ${result.user.fname}`;
-
-    showView("map-view");
-  } else {
-    document.querySelector("#login-status").innerText = result.error;
-  }
-}
-
-// User logout
-function userLogout() {
-  sessionStorage.clear();
-  document.querySelector("#main-nav").classList.add("hidden");
-  document.querySelector("#logged-in-message").classList.add("hidden");
-  window.location.reload();
 }
 
 // Log a spotted aircraft
@@ -501,18 +529,150 @@ async function confirmSpot() {
 }
 
 /* ================================================
+                    LOGBOOK
+================================================ */
+
+function formatLogDate(timestamp) {
+  if (!timestamp) return "—";
+  const d = new Date(timestamp.replace(" ", "T"));
+  return (
+    d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }) +
+    " · " +
+    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
+function renderLogbookGrid(logs) {
+  const grid = document.querySelector("#logbook-grid");
+
+  if (!logs.length) {
+    grid.innerHTML = `<p class="logbook-empty">No aircraft logged yet. Head to the map and start spotting!</p>`;
+    return;
+  }
+
+  grid.innerHTML = logs
+    .map((log) => {
+      const date = formatLogDate(log.log_timestamp);
+      const callsign = log.log_callsign || "—";
+      const airline = log.airline_name || "—";
+      const dep = log.log_dep_iata || "—";
+      const arr = log.log_arr_iata || "—";
+      const model =
+        [log.air_manufacturer, log.air_icao_type].filter(Boolean).join(" ") ||
+        "—";
+      const reg = log.air_reg || "—";
+
+      return `
+      <div class="log-card">
+        <div class="log-card-header">
+          <span class="log-card-date">${date}</span>
+          <span class="log-card-callsign">${callsign}</span>
+        </div>
+        <p class="log-card-airline">${airline}</p>
+        <div class="log-card-route">
+          <span class="log-card-iata">${dep}</span>
+          <span class="log-card-arrow">&rarr;</span>
+          <span class="log-card-iata">${arr}</span>
+        </div>
+        <p class="log-card-detail">${model} &middot; ${reg}</p>
+      </div>`;
+    })
+    .join("");
+}
+
+async function loadLogbook() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  const userFName = sessionStorage.getItem("userFName");
+  document.querySelector("#user-logbook-msg").innerText =
+    `${userFName}'s Logbook`;
+
+  const grid = document.querySelector("#logbook-grid");
+  grid.innerHTML = `<p class="logbook-empty">Loading...</p>`;
+
+  try {
+    const response = await fetch(
+      `/api/logbook?userId=${userId}&sort=${logbookSort}`,
+    );
+    const data = await response.json();
+    renderLogbookGrid(data.logs);
+  } catch {
+    grid.innerHTML = `<p class="logbook-empty">Failed to load logbook. Please try again.</p>`;
+  }
+}
+
+/* ================================================
                   EVENT LISTENERS
 ================================================ */
 
-document.querySelector("#panel-close-btn").addEventListener("click", closePanel);
+document
+  .querySelector("#nav-map")
+  .addEventListener("click", () => showView("map-view"));
+document
+  .querySelector("#nav-logbook")
+  .addEventListener("click", () => showView("logbook-view"));
+document.querySelector("#sort-toggle-btn").addEventListener("click", () => {
+  logbookSort = logbookSort === "desc" ? "asc" : "desc";
+  document.querySelector("#sort-toggle-btn").textContent =
+    logbookSort === "desc" ? "Newest first" : "Oldest first";
+  loadLogbook();
+});
+document
+  .querySelector("#nav-stats")
+  .addEventListener("click", () => console.log("Statistics – coming soon"));
+document
+  .querySelector("#nav-settings")
+  .addEventListener("click", () => console.log("Settings – coming soon"));
+document
+  .querySelector("#nav-profile")
+  .addEventListener("click", () => console.log("Profile – coming soon"));
+document
+  .querySelector("#mobile-profile-btn")
+  .addEventListener("click", () => console.log("Profile – coming soon"));
+document
+  .querySelector("#panel-close-btn")
+  .addEventListener("click", closePanel);
 document.querySelector("#login-btn").addEventListener("click", userLogin);
-document.querySelector("#register-step1-btn").addEventListener("click", userRegisterStep1);
-document.querySelector("#register-step2-btn").addEventListener("click", userRegisterStep2);
+document
+  .querySelector("#register-step1-btn")
+  .addEventListener("click", userRegisterStep1);
+document
+  .querySelector("#register-step2-btn")
+  .addEventListener("click", userRegisterStep2);
 document.querySelector("#logout-btn").addEventListener("click", userLogout);
-document.querySelector("#create-account-page-btn").addEventListener("click", goToAccountCreation);
+document
+  .querySelector("#create-account-page-btn")
+  .addEventListener("click", goToAccountCreation);
 document.querySelector("#login-page-btn").addEventListener("click", goToLogin);
-document.querySelector("#complete-reg-back-btn").addEventListener("click", () => {
+document
+  .querySelector("#complete-reg-back-btn")
+  .addEventListener("click", () => {
     document.querySelector("#register-step1-status").innerText = "";
     pendingRegistration = null;
     showView("register-step1-view");
   });
+
+// Key handlers for Login and Registration
+
+["#login-id", "#login-pass"].forEach((id) => {
+  document.querySelector(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") userLogin();
+  });
+});
+
+["#reg-email", "#reg-pass"].forEach((id) => {
+  document.querySelector(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") userRegisterStep1();
+  });
+});
+
+["#reg-fname", "#reg-lname", "#reg-user"].forEach((id) => {
+  document.querySelector(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") userRegisterStep2();
+  });
+});
