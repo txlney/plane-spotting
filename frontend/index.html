@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
+    />
     <title>SkyLog</title>
     <link rel="icon" href="img/sl-text-blue-white.png" />
     <link rel="stylesheet" href="styles.css" />
@@ -28,17 +31,63 @@
 
   <body>
     <nav id="main-nav" class="hidden">
-      <button onclick="showView('map-view')">Live Map</button>
-      <button onclick="showView('logbook-view')">Logbook</button>
-      <button id="logout-btn">Logout</button>
+      <div class="nav-group nav-top">
+        <button class="nav-btn" id="nav-map" aria-label="Map" title="Map">
+          ✈
+        </button>
+        <button
+          class="nav-btn"
+          id="nav-logbook"
+          aria-label="Logbook"
+          title="Logbook"
+        >
+          ☰
+        </button>
+        <button
+          class="nav-btn"
+          id="nav-stats"
+          aria-label="Statistics"
+          title="Statistics"
+        >
+          ◈
+        </button>
+      </div>
+      <div class="nav-group nav-bottom">
+        <button
+          class="nav-btn"
+          id="nav-settings"
+          aria-label="Settings"
+          title="Settings"
+        >
+          ⚙
+        </button>
+        <button
+          class="nav-btn"
+          id="nav-profile"
+          aria-label="Profile"
+          title="Profile"
+        >
+          ⊙
+        </button>
+      </div>
     </nav>
+
+    <button
+      id="mobile-profile-btn"
+      class="hidden"
+      aria-label="Profile"
+      title="Profile"
+    >
+      ⊙
+    </button>
+    <button id="logout-btn" class="hidden"></button>
 
     <section id="login-view" class="auth">
       <div id="login-form">
         <img class="logo" src="img/logo-cream.png" alt="SkyLog logo" />
         <h1>Welcome to <span class="skylog-name">SkyLog!</span></h1>
         <input type="text" id="login-id" placeholder="Username or Email" />
-        <input type="password" id="login-pass" placeholder="Password" />
+        <input type="password" id="login-pass" placeholder="Your password" />
         <p id="login-status"></p>
         <button id="login-btn" class="blue-btn primary-btn">Log in</button>
       </div>
@@ -51,7 +100,9 @@
     <section id="register-step1-view" class="hidden auth">
       <div id="register-step1-form">
         <img class="logo" src="img/logo-cream.png" alt="SkyLog logo" />
-        <h1>Let's create your <span class="skylog-name">SkyLog</span> account</h1>
+        <h1>
+          Let's create your <span class="skylog-name">SkyLog</span> account
+        </h1>
         <input type="email" id="reg-email" placeholder="Email Address" />
         <input type="password" id="reg-pass" placeholder="Password" />
         <p id="register-step1-status"></p>
@@ -79,7 +130,9 @@
           Complete registration
         </button>
       </div>
-      <button id="complete-reg-back-btn" class="blue-btn tertiary-btn">Back</button>
+      <button id="complete-reg-back-btn" class="blue-btn tertiary-btn">
+        Back
+      </button>
     </section>
 
     <section id="map-view" class="hidden">
@@ -98,8 +151,13 @@
     </section>
 
     <section id="logbook-view" class="hidden">
-      <h1>My Logbook</h1>
-      <div id="logbook-list"></div>
+      <div class="logbook-header">
+        <h1 id="user-logbook-msg">My Logbook</h1>
+        <button id="sort-toggle-btn" class="blue-btn secondary-btn">
+          Newest first
+        </button>
+      </div>
+      <div id="logbook-grid" class="logbook-grid"></div>
     </section>
 
     <footer class="hidden">
