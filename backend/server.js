@@ -342,6 +342,116 @@ app.get("/api/check-username-availability", (req, res) => {
   });
 });
 
+// Get user profile
+app.get("/api/user/:userId", (req, res) => {
+  const userId = req.params.userId;
+  const sql = `
+    SELECT user_id, user_fname, user_lname, user_username, user_email, user_joined_at
+    FROM users WHERE user_id = ?`;
+
+  db.get(sql, [userId], (error, user) => {
+    if (error) return res.status(500).json({ error: "Database error" });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ user });
+  });
+});
+
+// Update user profile
+app.put("/api/user/:userId", async (req, res) => {
+  const userId = req.params.userId;
+  const { fname, lname, username } = req.body;
+
+  if (!fname || !username) {
+    return res
+      .status(400)
+      .json({ error: "First name and username are required." });
+  }
+
+  // Check if new username is taken by another user
+  try {
+    const existing = await dbGet(
+      "SELECT user_id FROM users WHERE LOWER(user_username) = LOWER(?) AND user_id != ?",
+      [username, userId],
+    );
+    if (existing) {
+      return res.status(409).json({ error: "Username already taken." });
+    }
+  } catch (error) {
+    return res.status(500).json({ error: "Database error" });
+  }
+
+  const sql = `
+    UPDATE users SET user_fname = ?, user_lname = ?, user_username = ?
+    WHERE user_id = ?`;
+
+  db.run(sql, [fname, lname, username.toLowerCase(), userId], function (error) {
+    if (error)
+      return res.status(500).json({ error: "Failed to update profile." });
+    if (this.changes === 0)
+      return res.status(404).json({ error: "User not found." });
+    res.json({ message: "Profile updated successfully." });
+  });
+});
+
+// Change user password
+app.put("/api/user/:userId/password", async (req, res) => {
+  const userId = req.params.userId;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res
+      .status(400)
+      .json({ error: "Current and new passwords are required." });
+  }
+
+  if (newPassword.length < 5) {
+    return res
+      .status(400)
+      .json({ error: "New password must be at least 5 characters." });
+  }
+
+  try {
+    const user = await dbGet(
+      "SELECT user_pass_hash FROM users WHERE user_id = ?",
+      [userId],
+    );
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const match = await bcrypt.compare(currentPassword, user.user_pass_hash);
+    if (!match)
+      return res.status(401).json({ error: "Current password is incorrect." });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    db.run(
+      "UPDATE users SET user_pass_hash = ? WHERE user_id = ?",
+      [hash, userId],
+      (error) => {
+        if (error)
+          return res.status(500).json({ error: "Failed to update password." });
+        res.json({ message: "Password changed successfully." });
+      },
+    );
+  } catch (error) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Delete user account
+app.delete("/api/user/:userId", (req, res) => {
+  const userId = req.params.userId;
+
+  db.serialize(() => {
+    db.run("DELETE FROM logs WHERE user_id = ?", [userId]);
+    db.run("DELETE FROM users WHERE user_id = ?", [userId], function (error) {
+      if (error)
+        return res.status(500).json({ error: "Failed to delete account." });
+      if (this.changes === 0)
+        return res.status(404).json({ error: "User not found." });
+      res.json({ message: "Account deleted successfully." });
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
