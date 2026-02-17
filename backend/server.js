@@ -111,7 +111,7 @@ app.get("/api/flights", async (req, res) => {
     const response = await axios.get(openskyUrl, { params }); // removed authentication for now, would always throw 401 error
 
     const flightData = response.data.states
-      ? response.data.states.slice(0, 10)
+      ? response.data.states.slice(0, 50)
       : [];
 
     res.json(flightData);
