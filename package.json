@@ -5,11 +5,9 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "config": ""
+    "start": "node backend/server.js"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.2.8",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
