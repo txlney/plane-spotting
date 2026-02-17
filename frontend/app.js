@@ -67,7 +67,6 @@ function showView(viewId) {
   const activeBtn = document.querySelector(`#${navViewMap[viewId]}`);
   if (activeBtn) activeBtn.classList.add("active");
 }
-window.showView = showView;
 
 // Check if user is logged in on page load/reload
 window.addEventListener("DOMContentLoaded", () => {
@@ -76,7 +75,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (loggedIn) {
     const username = sessionStorage.getItem("username");
     const fName = sessionStorage.getItem("userFName");
-    console.log(`Logged in as: ${username}`);
     initMap();
     document.querySelector("#main-nav").classList.remove("hidden");
     document.querySelector("#mobile-profile-btn").classList.remove("hidden");
@@ -288,8 +286,8 @@ function initMap() {
 
   map.on("locationerror", (e) => {
     console.warn("Location access denied or failed. Using default location.");
-    // map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
-    map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
+    map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
+    // map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
     refreshFlights();
     // setInterval(refreshFlights, 60000); TURN BACK ON - turned off to protect API limits
   });
@@ -351,7 +349,6 @@ async function refreshFlights() {
     markerGroup.clearLayers();
 
     flights.forEach((f) => {
-      console.log(`Attempting to place marker for ${f[1]} at ${f[6]}, ${f[5]}`);
       const hex = f[0];
       const lat = f[6];
       const lon = f[5];
@@ -520,7 +517,7 @@ async function confirmSpot() {
   const spotData = {
     user_id: loggedInUserId,
     ...currentFlightData,
-    notes: "Spotted via live map",
+    notes: "Spotted via live map", // Need to implement user noted rather than hard coded
   };
 
   const response = await fetch("/api/log-spot", {
@@ -582,10 +579,20 @@ function renderLogbookGrid(logs) {
           <span class="log-card-arrow">&rarr;</span>
           <span class="log-card-iata">${arr}</span>
         </div>
-        <p class="log-card-detail">${model} &middot; ${reg}</p>
+        <div class="log-card-footer">
+          <p class="log-card-detail">${model} &middot; ${reg}</p>
+          <button class="log-delete-btn" data-log-id="${log.log_id}">Delete</button>
+        </div>
       </div>`;
     })
     .join("");
+
+  document.querySelectorAll(".log-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const logId = e.target.getAttribute("data-log-id");
+      deleteLog(logId);
+    });
+  });
 }
 
 async function loadLogbook() {
@@ -607,6 +614,19 @@ async function loadLogbook() {
     renderLogbookGrid(data.logs);
   } catch {
     grid.innerHTML = `<p class="logbook-empty">Failed to load logbook. Please try again.</p>`;
+  }
+}
+
+async function deleteLog(logId) {
+  if (!confirm("Are you sure you want to delete this log?")) return;
+
+  try {
+    const response = await fetch(`/api/log/${logId}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Failed to delete log");
+
+    loadLogbook();
+  } catch (error) {
+    alert("Failed to delete log. Please try again.");
   }
 }
 
@@ -826,7 +846,7 @@ document.querySelector("#sort-toggle-btn").addEventListener("click", () => {
 });
 document
   .querySelector("#nav-stats")
-  .addEventListener("click", () => console.log("Statistics – coming soon"));
+  .addEventListener("click", () => showView("statistics-view"));
 document
   .querySelector("#nav-settings")
   .addEventListener("click", () => showView("settings-view"));

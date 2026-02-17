@@ -67,7 +67,7 @@ function seedLookupTables() {
         const response = await axios.get("https://airlabs.co/api/v9/airlines", {
           params: { api_key: process.env.AIRLABS_API_KEY },
         });
-        const airlines = await response.data.response;
+        const airlines = response.data.response;
         const stmt = db.prepare(`
           INSERT OR IGNORE INTO airlines (airline_icao, airline_iata, airline_name,  
           airline_country_code) VALUES (?, ?, ?, ?)`);
@@ -207,25 +207,27 @@ app.post("/api/log-spot", async (req, res) => {
       (user_id, air_icao24_hex, log_callsign, log_dep_iata, log_arr_iata, log_latitude, log_longitude, log_altitude, log_notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-  try {
-    db.serialize(() => {
-      db.run(aircraftSql, [hex, reg, airline, type, manufacturer, age]);
+  db.serialize(() => {
+    db.run(
+      aircraftSql,
+      [hex, reg, airline, type, manufacturer, age],
+      (error) => {
+        if (error) return res.status(500).json({ error: error.message });
 
-      db.run(
-        logSql,
-        [user_id, hex, callsign, dep, arr, lat, lon, alt, notes],
-        function (error) {
-          if (error) return res.status(500).json({ error: error.message });
-          res.json({
-            message: "Aircraft spotted and logged.", // Need to implement user notes rather than hard coded
-            logId: this.lastID,
-          });
-        },
-      );
-    });
-  } catch (error) {
-    res.status(500).json({ error: "Database transaction failed" });
-  }
+        db.run(
+          logSql,
+          [user_id, hex, callsign, dep, arr, lat, lon, alt, notes],
+          function (error) {
+            if (error) return res.status(500).json({ error: error.message });
+            res.json({
+              message: "Aircraft spotted and logged.",
+              logId: this.lastID,
+            });
+          },
+        );
+      },
+    );
+  });
 });
 
 // Get all user logged spots
@@ -265,25 +267,41 @@ app.get("/api/logbook", (req, res) => {
   });
 });
 
+// Delete user log entry
+app.delete("/api/log/:logId", (req, res) => {
+  const logId = req.params.logId;
+
+  db.run("DELETE FROM logs WHERE log_id = ?", [logId], function (error) {
+    if (error) return res.status(500).json({ error: "Failed to delete log." });
+    if (this.changes === 0)
+      return res.status(404).json({ error: "Log entry not found." });
+    res.json({ message: "Log entry deleted successfully." });
+  });
+});
+
 // Register user into database & hash password
 app.post("/api/register", async (req, res) => {
-  const { email, password, fName, lName, username } = req.body;
-  const saltRounds = 10;
-  const hash = await bcrypt.hash(password, saltRounds);
+  try {
+    const { email, password, fName, lName, username } = req.body;
+    const saltRounds = 10;
+    const hash = await bcrypt.hash(password, saltRounds);
 
-  const sql = `
-    INSERT INTO users
-      (user_email, user_pass_hash, user_fname, user_lname, user_username)
-      VALUES (?, ?, ?, ?, ?)`;
+    const sql = `
+      INSERT INTO users
+        (user_email, user_pass_hash, user_fname, user_lname, user_username)
+        VALUES (?, ?, ?, ?, ?)`;
 
-  db.run(
-    sql,
-    [email.toLowerCase(), hash, fName, lName, username.toLowerCase()],
-    (error) => {
-      if (error) return res.status(400).json({ error: error.message });
-      res.json({ message: "User registered successfully." });
-    },
-  );
+    db.run(
+      sql,
+      [email.toLowerCase(), hash, fName, lName, username.toLowerCase()],
+      (error) => {
+        if (error) return res.status(400).json({ error: error.message });
+        res.json({ message: "User registered successfully." });
+      },
+    );
+  } catch (error) {
+    res.status(500).json({ error: "Something went wrong." });
+  }
 });
 
 // User login
@@ -338,7 +356,7 @@ app.get("/api/check-username-availability", (req, res) => {
 
   db.get(sql, [username ?? null], (error, row) => {
     if (error) return res.status(500).json({ error: "Database error" });
-    res.json({ usernameTaken: row ? true : false });
+    res.json({ usernameTaken: !!row });
   });
 });
 
