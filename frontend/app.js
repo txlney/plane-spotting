@@ -55,6 +55,10 @@ function showView(viewId) {
     if (viewId === "logbook-view") {
       loadLogbook();
     }
+
+    if (viewId === "profile-view") {
+      loadProfile();
+    }
   }
 
   document
@@ -607,6 +611,204 @@ async function loadLogbook() {
 }
 
 /* ================================================
+                    PROFILE
+================================================ */
+
+let originalUsername = "";
+
+function showProfileDetails() {
+  document.querySelector("#profile-details-section").classList.remove("hidden");
+  document.querySelector("#profile-edit-section").classList.add("hidden");
+}
+
+function showProfileEdit() {
+  document.querySelector("#profile-details-section").classList.add("hidden");
+  document.querySelector("#profile-edit-section").classList.remove("hidden");
+  document.querySelector("#profile-edit-status").innerText = "";
+  document.querySelector("#profile-edit-status").className = "";
+}
+
+async function loadProfile() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  const username = sessionStorage.getItem("username");
+
+  document.querySelector("#profile-header-msg").innerText = username;
+  document.querySelector("#profile-pass-status").innerText = "";
+  document.querySelector("#profile-pass-status").className = "";
+  document.querySelector("#profile-current-pass").value = "";
+  document.querySelector("#profile-new-pass").value = "";
+  document.querySelector("#profile-confirm-pass").value = "";
+  showProfileDetails();
+
+  try {
+    const response = await fetch(`/api/user/${userId}`);
+    const data = await response.json();
+    const user = data.user;
+
+    const fullName =
+      [user.user_fname, user.user_lname].filter(Boolean).join(" ") || "—";
+    document.querySelector("#profile-name").innerText = fullName;
+    document.querySelector("#profile-username").innerText = user.user_username;
+    document.querySelector("#profile-email").innerText = user.user_email;
+    document.querySelector("#profile-joined").innerText = formatLogDate(
+      user.user_joined_at,
+    );
+
+    document.querySelector("#profile-edit-fname").value = user.user_fname || "";
+    document.querySelector("#profile-edit-lname").value = user.user_lname || "";
+    document.querySelector("#profile-edit-username").value =
+      user.user_username || "";
+    originalUsername = user.user_username;
+  } catch {
+    document.querySelector("#profile-name").innerText =
+      "Failed to load profile.";
+  }
+}
+
+async function saveProfile() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  const fname = document.querySelector("#profile-edit-fname").value.trim();
+  const lname = document.querySelector("#profile-edit-lname").value.trim();
+  const username = document
+    .querySelector("#profile-edit-username")
+    .value.trim();
+  const statusEl = document.querySelector("#profile-edit-status");
+
+  if (!fname || !username) {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "First name and username are required.";
+    return;
+  }
+
+  // Check username availability if changed
+  if (username.toLowerCase() !== originalUsername.toLowerCase()) {
+    try {
+      const check = await fetch(
+        `/api/check-username-availability?username=${encodeURIComponent(username)}`,
+      );
+      const availability = await check.json();
+      if (availability.usernameTaken) {
+        statusEl.className = "profile-status-error";
+        statusEl.innerText = "Username already taken.";
+        return;
+      }
+    } catch {
+      statusEl.className = "profile-status-error";
+      statusEl.innerText = "Something went wrong. Please try again.";
+      return;
+    }
+  }
+
+  try {
+    const response = await fetch(`/api/user/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fname, lname, username }),
+    });
+    const result = await response.json();
+
+    if (response.ok) {
+      statusEl.className = "profile-status-success";
+      statusEl.innerText = result.message;
+      sessionStorage.setItem("userFName", fname);
+      sessionStorage.setItem("username", username.toLowerCase());
+      document.querySelector("#logged-in-message").innerText =
+        `Logged in as: ${fname}`;
+      loadProfile();
+    } else {
+      statusEl.className = "profile-status-error";
+      statusEl.innerText = result.error;
+    }
+  } catch {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "Failed to save changes. Please try again.";
+  }
+}
+
+async function changePassword() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  const currentPassword = document.querySelector("#profile-current-pass").value;
+  const newPassword = document.querySelector("#profile-new-pass").value;
+  const confirmPassword = document.querySelector("#profile-confirm-pass").value;
+  const statusEl = document.querySelector("#profile-pass-status");
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "Please fill in all password fields.";
+    return;
+  }
+
+  if (newPassword.length < 5) {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "New password must be at least 5 characters.";
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "New passwords do not match.";
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/user/${userId}/password`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const result = await response.json();
+
+    if (response.ok) {
+      statusEl.className = "profile-status-success";
+      statusEl.innerText = result.message;
+      document.querySelector("#profile-current-pass").value = "";
+      document.querySelector("#profile-new-pass").value = "";
+      document.querySelector("#profile-confirm-pass").value = "";
+    } else {
+      statusEl.className = "profile-status-error";
+      statusEl.innerText = result.error;
+    }
+  } catch {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "Failed to change password. Please try again.";
+  }
+}
+
+async function deleteAccount() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  const confirmed = confirm(
+    "Are you sure you want to delete your account? This action cannot be undone.",
+  );
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(`/api/user/${userId}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      alert(
+        "Your account has been deleted.\nYou will now be directed to the login page.",
+      );
+      userLogout();
+    } else {
+      const result = await response.json();
+      alert(result.error || "Failed to delete account.");
+    }
+  } catch {
+    alert("Something went wrong. Please try again.");
+  }
+}
+
+/* ================================================
                   EVENT LISTENERS
 ================================================ */
 
@@ -627,13 +829,13 @@ document
   .addEventListener("click", () => console.log("Statistics – coming soon"));
 document
   .querySelector("#nav-settings")
-  .addEventListener("click", () => console.log("Settings – coming soon"));
+  .addEventListener("click", () => showView("settings-view"));
 document
   .querySelector("#nav-profile")
-  .addEventListener("click", () => console.log("Profile – coming soon"));
+  .addEventListener("click", () => showView("profile-view"));
 document
   .querySelector("#mobile-profile-btn")
-  .addEventListener("click", () => console.log("Profile – coming soon"));
+  .addEventListener("click", () => showView("profile-view"));
 document
   .querySelector("#panel-close-btn")
   .addEventListener("click", closePanel);
@@ -645,6 +847,22 @@ document
   .querySelector("#register-step2-btn")
   .addEventListener("click", userRegisterStep2);
 document.querySelector("#logout-btn").addEventListener("click", userLogout);
+document
+  .querySelector("#profile-save-btn")
+  .addEventListener("click", saveProfile);
+document
+  .querySelector("#profile-edit-btn")
+  .addEventListener("click", showProfileEdit);
+document
+  .querySelector("#profile-edit-cancel-btn")
+  .addEventListener("click", showProfileDetails);
+document
+  .querySelector("#profile-pass-btn")
+  .addEventListener("click", changePassword);
+document
+  .querySelector("#mobile-settings-btn")
+  .addEventListener("click", () => showView("settings-view"));
+document.querySelector("#delete-btn").addEventListener("click", deleteAccount);
 document
   .querySelector("#create-account-page-btn")
   .addEventListener("click", goToAccountCreation);
