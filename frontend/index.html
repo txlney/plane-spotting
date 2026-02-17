@@ -178,6 +178,12 @@
       <div id="logbook-grid" class="logbook-grid"></div>
     </section>
 
+    <section id="statistics-view" class="hidden">
+      <div class="statistics-header">
+        <h1>User Statistics</h1>
+      </div>
+    </section>
+
     <section id="settings-view" class="hidden">
       <div class="settings-header">
         <h1>Application Settings</h1>
@@ -188,6 +194,13 @@
       <div class="profile-container">
         <div class="profile-header">
           <h1 id="profile-header-msg">User</h1>
+          <button id="mobile-settings-btn" class="blue-btn">
+            <img
+              src="img/settings-svgrepo-com.svg"
+              alt="Settings Icon"
+              class="profile-icon-mobile"
+            />
+          </button>
         </div>
 
         <div class="profile-row">
@@ -195,7 +208,11 @@
             <div class="profile-detail-header">
               <h2 class="profile-section-title">My Profile</h2>
               <button id="profile-edit-btn" class="blue-btn profile-header-btn">
-                ✎
+                <img
+                  src="img/write-svgrepo-com-blue.svg"
+                  alt="Edit Icon"
+                  class="profile-icon"
+                />
               </button>
             </div>
             <div class="profile-detail-row">
@@ -273,9 +290,6 @@
           </div>
         </div>
 
-        <button id="mobile-settings-btn" class="blue-btn primary-btn">
-          App Settings
-        </button>
         <button id="logout-btn" class="logout-btn">Log out</button>
         <button id="delete-btn" class="delete-btn">Delete Account</button>
       </div>
