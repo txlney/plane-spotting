@@ -4,6 +4,9 @@ let currentFlightData = null;
 let pendingRegistration = null;
 let selectedMarker = null;
 let logbookSort = "desc";
+let markerSize = 32;
+let markerColour = "#f9d01a";
+let selectedMarkerColour = "#e86c33";
 
 const PLANE_SVG_PATH = `M511.06,286.261c-0.387-10.849-7.42-20.615-18.226-25.356l-193.947-74.094
   C298.658,78.15,285.367,3.228,256.001,3.228c-29.366,0-42.657,74.922-42.885,183.583L19.167,260.904
@@ -17,17 +20,17 @@ const PLANE_SVG_PATH = `M511.06,286.261c-0.387-10.849-7.42-20.615-18.226-25.356l
 
 function createPlaneIcon(color) {
   return L.divIcon({
-    html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32" height="32">
-      <path fill="${color}" d="${PLANE_SVG_PATH}"/>
+    html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${markerSize}" height="${markerSize}">
+      <path fill="${color}" d="${PLANE_SVG_PATH}" stroke="#000000" stroke-width="25" style="paint-order: stroke fill;"/>
     </svg>`,
     className: "",
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [markerSize, markerSize],
+    iconAnchor: [Math.floor(markerSize / 2), Math.floor(markerSize / 2)],
   });
 }
 
-const planeIcon = createPlaneIcon("#f9d01a");
-const planeIconSelected = createPlaneIcon("#e86c33");
+const planeIcon = createPlaneIcon(markerColour);
+const planeIconSelected = createPlaneIcon(selectedMarkerColour);
 
 const navViewMap = {
   "map-view": "nav-map",
