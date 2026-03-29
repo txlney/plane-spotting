@@ -62,6 +62,10 @@ function showView(viewId) {
     if (viewId === "profile-view") {
       loadProfile();
     }
+
+    if (viewId === "statistics-view") {
+      loadStatistics();
+    }
   }
 
   document
@@ -71,19 +75,42 @@ function showView(viewId) {
   if (activeBtn) activeBtn.classList.add("active");
 }
 
+function updateNavPfp(pfpUrl) {
+  const navIcon = document.querySelector("#nav-profile-icon");
+  const navPfp = document.querySelector("#nav-profile-pfp");
+  const mobileIcon = document.querySelector("#mobile-profile-icon");
+  const mobilePfp = document.querySelector("#mobile-profile-pfp");
+
+  if (pfpUrl) {
+    navIcon.classList.add("hidden");
+    navPfp.src = pfpUrl;
+    navPfp.classList.remove("hidden");
+    mobileIcon.classList.add("hidden");
+    mobilePfp.src = pfpUrl;
+    mobilePfp.classList.remove("hidden");
+  } else {
+    navIcon.classList.remove("hidden");
+    navPfp.classList.add("hidden");
+    mobileIcon.classList.remove("hidden");
+    mobilePfp.classList.add("hidden");
+  }
+}
+
 // Check if user is logged in on page load/reload
 window.addEventListener("DOMContentLoaded", () => {
-  const loggedIn = sessionStorage.getItem("userId");
+  const loggedIn = localStorage.getItem("userId");
 
   if (loggedIn) {
-    const username = sessionStorage.getItem("username");
-    const fName = sessionStorage.getItem("userFName");
+    const username = localStorage.getItem("username");
+    const fName = localStorage.getItem("userFName");
+    const pfpUrl = localStorage.getItem("pfpUrl") || null;
     initMap();
     document.querySelector("#main-nav").classList.remove("hidden");
     document.querySelector("#mobile-profile-btn").classList.remove("hidden");
     document.querySelector("footer").classList.remove("hidden");
     document.querySelector("#logged-in-message").innerText =
       `Logged in as:  ${fName}`;
+    updateNavPfp(pfpUrl);
     showView("map-view");
   } else {
     showView("login-view");
@@ -93,9 +120,42 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// Send token with requests
+function authHeaders() {
+  const token = localStorage.getItem("authToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 /* ================================================
                   AUTHENTICATION
 ================================================ */
+
+// Authenticated API calls wrapper
+async function authenticatedFetch(url, options = {}) {
+  const headers = {
+    ...authHeaders(),
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401 || response.status === 403) {
+      const data = await response.json();
+
+      if (data.error?.includes("token") || data.error?.includes("expired")) {
+        alert("Your session has expired. Please log in again.");
+        userLogout();
+        return null;
+      }
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Fetch error:", error);
+    throw error;
+  }
+}
 
 // Direct user to Create Account page
 function goToAccountCreation() {
@@ -111,6 +171,16 @@ function goToLogin() {
   document.querySelector("#login-id").value = "";
   document.querySelector("#login-pass").value = "";
   showView("login-view");
+}
+
+// Toggle password visibility
+function togglePassword(inputId) {
+  const input = document.querySelector(`#${inputId}`);
+  const btn = input.parentElement.querySelector(".toggle-pass-btn");
+  const isPassword = input.type === "password";
+  input.type = isPassword ? "text" : "password";
+  btn.querySelector(".eye-show").classList.toggle("hidden", !isPassword);
+  btn.querySelector(".eye-hide").classList.toggle("hidden", isPassword);
 }
 
 // User registration (step 1)
@@ -234,9 +304,11 @@ async function userLogin() {
   const result = await response.json();
 
   if (response.ok) {
-    sessionStorage.setItem("userId", result.user.id);
-    sessionStorage.setItem("username", result.user.username);
-    sessionStorage.setItem("userFName", result.user.fname);
+    localStorage.setItem("authToken", result.token);
+    localStorage.setItem("userId", result.user.id);
+    localStorage.setItem("username", result.user.username);
+    localStorage.setItem("userFName", result.user.fname);
+    localStorage.setItem("pfpUrl", result.user.pfpUrl || "");
 
     initMap();
 
@@ -245,6 +317,7 @@ async function userLogin() {
     document.querySelector("#mobile-profile-btn").classList.remove("hidden");
     document.querySelector("#logged-in-message").innerText =
       `Logged in as: ${result.user.fname}`;
+    updateNavPfp(result.user.pfpUrl || null);
 
     showView("map-view");
   } else {
@@ -254,7 +327,7 @@ async function userLogin() {
 
 // User logout
 function userLogout() {
-  sessionStorage.clear();
+  localStorage.clear();
   document.querySelector("#main-nav").classList.add("hidden");
   document.querySelector("#mobile-profile-btn").classList.add("hidden");
   document.querySelector("footer").classList.add("hidden");
@@ -509,7 +582,7 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
 
 // Log a spotted aircraft
 async function confirmSpot() {
-  const loggedInUserId = sessionStorage.getItem("userId");
+  const loggedInUserId = localStorage.getItem("userId");
 
   if (!loggedInUserId) {
     alert("Please login to log a spot.");
@@ -523,11 +596,12 @@ async function confirmSpot() {
     notes: "Spotted via live map", // Need to implement user noted rather than hard coded
   };
 
-  const response = await fetch("/api/log-spot", {
+  const response = await authenticatedFetch("/api/log-spot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(spotData),
   });
+  if (!response) return;
   const result = await response.json();
   alert(result.message);
 }
@@ -599,10 +673,10 @@ function renderLogbookGrid(logs) {
 }
 
 async function loadLogbook() {
-  const userId = sessionStorage.getItem("userId");
+  const userId = localStorage.getItem("userId");
   if (!userId) return;
 
-  const userFName = sessionStorage.getItem("userFName");
+  const userFName = localStorage.getItem("userFName");
   document.querySelector("#user-logbook-msg").innerText =
     `${userFName}'s Logbook`;
 
@@ -610,9 +684,10 @@ async function loadLogbook() {
   grid.innerHTML = `<p class="logbook-empty">Loading...</p>`;
 
   try {
-    const response = await fetch(
-      `/api/logbook?userId=${userId}&sort=${logbookSort}`,
+    const response = await authenticatedFetch(
+      `/api/logbook?sort=${logbookSort}`,
     );
+    if (!response) return;
     const data = await response.json();
     renderLogbookGrid(data.logs);
   } catch {
@@ -624,7 +699,10 @@ async function deleteLog(logId) {
   if (!confirm("Are you sure you want to delete this log?")) return;
 
   try {
-    const response = await fetch(`/api/log/${logId}`, { method: "DELETE" });
+    const response = await authenticatedFetch(`/api/log/${logId}`, {
+      method: "DELETE",
+    });
+    if (!response) return;
     if (!response.ok) throw new Error("Failed to delete log");
 
     loadLogbook();
@@ -652,10 +730,10 @@ function showProfileEdit() {
 }
 
 async function loadProfile() {
-  const userId = sessionStorage.getItem("userId");
+  const userId = localStorage.getItem("userId");
   if (!userId) return;
 
-  const username = sessionStorage.getItem("username");
+  const username = localStorage.getItem("username");
 
   document.querySelector("#profile-header-msg").innerText = username;
   document.querySelector("#profile-pass-status").innerText = "";
@@ -663,10 +741,15 @@ async function loadProfile() {
   document.querySelector("#profile-current-pass").value = "";
   document.querySelector("#profile-new-pass").value = "";
   document.querySelector("#profile-confirm-pass").value = "";
+  document.querySelector("#password-fields").classList.remove("open");
+  document
+    .querySelector("#password-toggle-btn")
+    .setAttribute("aria-expanded", "false");
   showProfileDetails();
 
   try {
-    const response = await fetch(`/api/user/${userId}`);
+    const response = await authenticatedFetch(`/api/user/${userId}`);
+    if (!response) return;
     const data = await response.json();
     const user = data.user;
 
@@ -684,14 +767,96 @@ async function loadProfile() {
     document.querySelector("#profile-edit-username").value =
       user.user_username || "";
     originalUsername = user.user_username;
+
+    const pfpUrl = user.user_pfp_url || null;
+    localStorage.setItem("pfpUrl", pfpUrl || "");
+    updateNavPfp(pfpUrl);
+
+    const pfpImg = document.querySelector("#profile-pfp-img");
+    const pfpPlaceholder = document.querySelector("#profile-pfp-placeholder");
+    const pfpDeleteBtn = document.querySelector("#pfp-delete-btn");
+    if (pfpUrl) {
+      pfpImg.src = pfpUrl;
+      pfpImg.classList.remove("hidden");
+      pfpPlaceholder.classList.add("hidden");
+      pfpDeleteBtn.classList.remove("hidden");
+    } else {
+      pfpImg.classList.add("hidden");
+      pfpPlaceholder.classList.remove("hidden");
+      pfpDeleteBtn.classList.add("hidden");
+    }
+    document.querySelector("#pfp-status").innerText = "";
+    document.querySelector("#pfp-status").className = "";
   } catch {
     document.querySelector("#profile-name").innerText =
       "Failed to load profile.";
   }
 }
 
+async function uploadPfp(file) {
+  const userId = localStorage.getItem("userId");
+  if (!userId) return;
+
+  const statusEl = document.querySelector("#pfp-status");
+  statusEl.className = "";
+  statusEl.innerText = "Uploading...";
+
+  const formData = new FormData();
+  formData.append("pfp", file);
+
+  try {
+    const response = await authenticatedFetch(`/api/user/${userId}/pfp`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response) return;
+    const result = await response.json();
+
+    if (response.ok) {
+      statusEl.className = "profile-status-success";
+      statusEl.innerText = result.message;
+      localStorage.setItem("pfpUrl", result.pfpUrl);
+      loadProfile();
+    } else {
+      statusEl.className = "profile-status-error";
+      statusEl.innerText = result.error;
+    }
+  } catch {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "Failed to upload. Please try again.";
+  }
+}
+
+async function deletePfp() {
+  const userId = localStorage.getItem("userId");
+  if (!userId) return;
+
+  const statusEl = document.querySelector("#pfp-status");
+
+  try {
+    const response = await authenticatedFetch(`/api/user/${userId}/pfp`, {
+      method: "DELETE",
+    });
+    if (!response) return;
+    const result = await response.json();
+
+    if (response.ok) {
+      statusEl.className = "profile-status-success";
+      statusEl.innerText = result.message;
+      localStorage.setItem("pfpUrl", "");
+      loadProfile();
+    } else {
+      statusEl.className = "profile-status-error";
+      statusEl.innerText = result.error;
+    }
+  } catch {
+    statusEl.className = "profile-status-error";
+    statusEl.innerText = "Failed to remove photo. Please try again.";
+  }
+}
+
 async function saveProfile() {
-  const userId = sessionStorage.getItem("userId");
+  const userId = localStorage.getItem("userId");
   if (!userId) return;
 
   const fname = document.querySelector("#profile-edit-fname").value.trim();
@@ -727,18 +892,19 @@ async function saveProfile() {
   }
 
   try {
-    const response = await fetch(`/api/user/${userId}`, {
+    const response = await authenticatedFetch(`/api/user/${userId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fname, lname, username }),
     });
+    if (!response) return;
     const result = await response.json();
 
     if (response.ok) {
       statusEl.className = "profile-status-success";
       statusEl.innerText = result.message;
-      sessionStorage.setItem("userFName", fname);
-      sessionStorage.setItem("username", username.toLowerCase());
+      localStorage.setItem("userFName", fname);
+      localStorage.setItem("username", username.toLowerCase());
       document.querySelector("#logged-in-message").innerText =
         `Logged in as: ${fname}`;
       loadProfile();
@@ -753,7 +919,7 @@ async function saveProfile() {
 }
 
 async function changePassword() {
-  const userId = sessionStorage.getItem("userId");
+  const userId = localStorage.getItem("userId");
   if (!userId) return;
 
   const currentPassword = document.querySelector("#profile-current-pass").value;
@@ -780,11 +946,12 @@ async function changePassword() {
   }
 
   try {
-    const response = await fetch(`/api/user/${userId}/password`, {
+    const response = await authenticatedFetch(`/api/user/${userId}/password`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
     });
+    if (!response) return;
     const result = await response.json();
 
     if (response.ok) {
@@ -804,7 +971,7 @@ async function changePassword() {
 }
 
 async function deleteAccount() {
-  const userId = sessionStorage.getItem("userId");
+  const userId = localStorage.getItem("userId");
   if (!userId) return;
 
   const confirmed = confirm(
@@ -813,7 +980,7 @@ async function deleteAccount() {
   if (!confirmed) return;
 
   try {
-    const response = await fetch(`/api/user/${userId}`, {
+    const response = await authenticatedFetch(`/api/user/${userId}`, {
       method: "DELETE",
     });
 
@@ -832,6 +999,70 @@ async function deleteAccount() {
 }
 
 /* ================================================
+                    STATISTICS
+================================================ */
+
+async function loadStatistics() {
+  const userId = localStorage.getItem("userId");
+  if (!userId) return;
+
+  const userFName = localStorage.getItem("userFName");
+  document.querySelector("#user-stats-msg").innerText =
+    `${userFName}'s Statistics`;
+
+  try {
+    const response = await authenticatedFetch("/api/stats");
+    if (!response) return;
+    const data = await response.json();
+
+    document.querySelector("#stat-total-logs").innerText = data.total_logs;
+    document.querySelector("#stat-unique-aircraft").innerText =
+      data.unique_aircraft;
+    document.querySelector("#stat-top-airline").innerText =
+      data.most_common_airline ?? "—";
+    document.querySelector("#stat-top-type").innerText =
+      data.most_common_type ?? "—";
+
+    renderMonthGrid(data.by_month);
+  } catch {
+    document.querySelector("#stats-month-grid").innerText =
+      "Failed to load statistics.";
+  }
+}
+
+function renderMonthGrid(byMonth) {
+  const monthMap = {};
+  for (const { month, count } of byMonth) {
+    monthMap[month] = count;
+  }
+
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-GB", {
+      month: "short",
+      year: "2-digit",
+    });
+    months.push({ key, label, count: monthMap[key] ?? 0 });
+  }
+
+  const maxCount = Math.max(...months.map((m) => m.count), 1);
+
+  document.querySelector("#stats-month-grid").innerHTML = months
+    .map(({ label, count }) => {
+      const intensity = count === 0 ? 0.08 : 0.2 + (count / maxCount) * 0.7;
+      return `
+        <div class="month-cell" style="--intensity: ${intensity.toFixed(2)}">
+          <span class="month-count">${count}</span>
+          <span class="month-label">${label}</span>
+        </div>`;
+    })
+    .join("");
+}
+
+/* ================================================
                   EVENT LISTENERS
 ================================================ */
 
@@ -844,7 +1075,7 @@ document
 document.querySelector("#sort-toggle-btn").addEventListener("click", () => {
   logbookSort = logbookSort === "desc" ? "asc" : "desc";
   document.querySelector("#sort-toggle-btn").textContent =
-    logbookSort === "desc" ? "Newest first" : "Oldest first";
+    logbookSort === "desc" ? "Viewing: Newest first" : "Viewing: Oldest first";
   loadLogbook();
 });
 document
@@ -882,10 +1113,38 @@ document
 document
   .querySelector("#profile-pass-btn")
   .addEventListener("click", changePassword);
+document.querySelectorAll(".toggle-pass-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const input = btn.parentElement.querySelector("input");
+    togglePassword(input.id);
+  });
+});
+document.querySelector("#password-toggle-btn").addEventListener("click", () => {
+  const fields = document.querySelector("#password-fields");
+  const toggle = document.querySelector("#password-toggle-btn");
+  const isOpen = fields.classList.contains("open");
+
+  fields.classList.toggle("open");
+  toggle.setAttribute("aria-expanded", String(!isOpen));
+
+  if (isOpen) {
+    document.querySelector("#profile-current-pass").value = "";
+    document.querySelector("#profile-new-pass").value = "";
+    document.querySelector("#profile-confirm-pass").value = "";
+    document.querySelector("#profile-pass-status").innerText = "";
+    document.querySelector("#profile-pass-status").className = "";
+  }
+});
 document
   .querySelector("#mobile-settings-btn")
   .addEventListener("click", () => showView("settings-view"));
 document.querySelector("#delete-btn").addEventListener("click", deleteAccount);
+document.querySelector("#pfp-file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) uploadPfp(file);
+  e.target.value = "";
+});
+document.querySelector("#pfp-delete-btn").addEventListener("click", deletePfp);
 document
   .querySelector("#create-account-page-btn")
   .addEventListener("click", goToAccountCreation);
