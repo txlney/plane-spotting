@@ -6,3 +6,5 @@ node_modules
 spotting.db
 .vscode
 uploads
+dev-notes.md
+todo.md
