@@ -2,9 +2,11 @@
 __pycache__/
 *.pyc
 *.log
-node_modules
-spotting.db
 .vscode
-uploads
+node_modules
+backend/spotting.db
+backend/uploads
+backend/check-db.js
 docs/dev-notes.md
 docs/todo.md
+
