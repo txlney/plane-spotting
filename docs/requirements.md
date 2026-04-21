@@ -51,7 +51,7 @@
 - **Compatibility:**
   - The system should work on different browsers (Chrome, Firefox, Edge, etc.)
   - The system should work on Windows, macOS, and mobile OS.
- 
+
 ## 5. System Architecture
 
 ### 5.1: Overview
@@ -61,18 +61,19 @@ The system will follow a clear client-server architecture, with separation betwe
 ### 5.2: Components
 
 - **Frontend: React**
-  - I've decided to build the frontend using React for its component-based architecture and efficient rendering. This makes it ideal for my live aircraft map and responsive UI.
+  - I've decided to build the frontend using vanilla JS rather than a framework. This keeps the app lightweight with fewer additional dependencies. Vanilla JS provides all the interactivity required for the live map and user interactions whilst keeping the codebase more straightforward and easier to debug.
 - **Backend: Node.js and Express**
   - The backend will use Node.js and Express to handle the real-time API calls efficiently. It's a suitable framework for processing the live flight data.
-- **Database: PostgreSQL**
-  - I will use PostgreSQL for my relational database to store user profiles, aircraft data and logs, etc., due to its scalability and advanced querying, which will be useful for filtering user collections.
-- **External API: OpenSky Network**
-  - The system will use OpenSky Network for its ADS-B data, providing real-time flight data. It will be ideal for my project because it offers free, but limited, access.
+- **Database: SQLite**
+  - I will use SQLite for my relational database to store user profiles, aircraft data and logs, etc. SQLite's lightweight nature and single-file data storage makes it ideal for a single-user app such as this project, while still providing the querying capabilities required for filtering and managing user collections.
+- **External API: OpenSky Network & Airlabs**
+  - The system will use a two-tier API approach to balance the cost and functionality. OpenSky Network will provide the real-time ADS-B data for aircraft positions within a certain area, also providing basic flight information for free with limits. Airlabs API will be used to retrieve more detailed flight information such as airline, departure/arrival airports. This combination allows the app to provide both live aircraft positions as well as rich flight details effectively whilst sticking to API limits.
 
 ## 6. Constraints
 
 - API Limitations:
-  - OpenSky Network has rate limits, exact limits to be determined.
+  - OpenSky Network has rate limits, offering 4000 credits per day.
+  - Airlabs also has rate limits, offering 1000 queries per month.
   - ADS-B data will likely have delays and incomplete coverage in certain regions.
   - ADS-B data will be missing for certain aircraft such as military or blocked flights.
 - Time and Resource Limitations:
