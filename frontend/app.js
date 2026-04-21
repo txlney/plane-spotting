@@ -4,9 +4,32 @@ let currentFlightData = null;
 let pendingRegistration = null;
 let selectedMarker = null;
 let logbookSort = "desc";
+let logbookFilters = {
+  search: "",
+  airline: "",
+  aircraftType: "",
+  dateFrom: "",
+  dateTo: "",
+};
 let markerSize = 32;
 let markerColour = "#f9d01a";
 let selectedMarkerColour = "#e86c33";
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+const handleSearchInput = debounce(() => {
+  applyFilters();
+}, 500);
 
 const PLANE_SVG_PATH = `M511.06,286.261c-0.387-10.849-7.42-20.615-18.226-25.356l-193.947-74.094
   C298.658,78.15,285.367,3.228,256.001,3.228c-29.366,0-42.657,74.922-42.885,183.583L19.167,260.904
@@ -57,6 +80,7 @@ function showView(viewId) {
 
     if (viewId === "logbook-view") {
       loadLogbook();
+      loadFilterOptions();
     }
 
     if (viewId === "profile-view") {
@@ -628,7 +652,7 @@ function renderLogbookGrid(logs) {
   const grid = document.querySelector("#logbook-grid");
 
   if (!logs.length) {
-    grid.innerHTML = `<p class="logbook-empty">No aircraft logged yet. Head to the map and start spotting!</p>`;
+    grid.innerHTML = `<p class="logbook-empty">No aircraft logs found.</p>`;
     return;
   }
 
@@ -656,6 +680,7 @@ function renderLogbookGrid(logs) {
           <span class="log-card-arrow">&rarr;</span>
           <span class="log-card-iata">${arr}</span>
         </div>
+        ${log.air_reg ? `<div class="log-card-photo" data-reg="${log.air_reg}"><div class="photo-placeholder">Loading...</div></div>` : ""}
         <div class="log-card-footer">
           <p class="log-card-detail">${model} &middot; ${reg}</p>
           <button class="log-delete-btn" data-log-id="${log.log_id}">Delete</button>
@@ -663,6 +688,9 @@ function renderLogbookGrid(logs) {
       </div>`;
     })
     .join("");
+
+  const uniqueRegs = [...new Set(logs.map((l) => l.air_reg).filter(Boolean))];
+  uniqueRegs.forEach((reg) => loadAircraftPhoto(reg));
 
   document.querySelectorAll(".log-delete-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -672,22 +700,60 @@ function renderLogbookGrid(logs) {
   });
 }
 
+function toggleFiltersPanel() {
+  const panel = document.querySelector("#filters-panel");
+  panel.classList.toggle("open");
+}
+
+async function loadAircraftPhoto(registration) {
+  const containers = document.querySelectorAll(`[data-reg="${registration}"]`);
+  if (!containers.length) return;
+
+  const setAll = (html) => containers.forEach((c) => (c.innerHTML = html));
+
+  try {
+    const response = await fetch(`/api/aircraft-photo/${registration}`);
+
+    if (response.ok) {
+      const data = await response.json();
+      setAll(`
+        <img src="${data.url}" alt="Aircraft ${registration}" class="log-card-img" />
+        <span class="photo-credit">${data.photographer}</span>
+      `);
+    } else {
+      setAll(`<div class="photo-placeholder">No photo available</div>`);
+    }
+  } catch {
+    setAll(`<div class="photo-placeholder">Photo unavailable</div>`);
+  }
+}
+
 async function loadLogbook() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
-
-  const userFName = localStorage.getItem("userFName");
-  document.querySelector("#user-logbook-msg").innerText =
-    `${userFName}'s Logbook`;
 
   const grid = document.querySelector("#logbook-grid");
   grid.innerHTML = `<p class="logbook-empty">Loading...</p>`;
 
   try {
+    const params = new URLSearchParams({
+      sort: logbookSort,
+    });
+
+    if (logbookFilters.search) params.append("search", logbookFilters.search);
+    if (logbookFilters.airline)
+      params.append("airline", logbookFilters.airline);
+    if (logbookFilters.aircraftType)
+      params.append("aircraftType", logbookFilters.aircraftType);
+    if (logbookFilters.dateFrom)
+      params.append("dateFrom", logbookFilters.dateFrom);
+    if (logbookFilters.dateTo) params.append("dateTo", logbookFilters.dateTo);
+
     const response = await authenticatedFetch(
-      `/api/logbook?sort=${logbookSort}`,
+      `/api/logbook?${params.toString()}`,
     );
     if (!response) return;
+
     const data = await response.json();
     renderLogbookGrid(data.logs);
   } catch {
@@ -709,6 +775,74 @@ async function deleteLog(logId) {
   } catch (error) {
     alert("Failed to delete log. Please try again.");
   }
+}
+
+async function loadFilterOptions() {
+  try {
+    const airlinesRes = await authenticatedFetch(
+      "/api/logbook/filters/airlines",
+    );
+    if (!airlinesRes) return;
+    const airlinesData = await airlinesRes.json();
+
+    const airlineSelect = document.querySelector("#filter-airline");
+    airlineSelect.innerHTML = '<option value="">All Airlines</option>';
+    airlinesData.airlines.forEach((airline) => {
+      const option = document.createElement("option");
+      option.value = airline;
+      option.textContent = airline;
+      airlineSelect.appendChild(option);
+    });
+
+    const typesRes = await authenticatedFetch(
+      "/api/logbook/filters/aircraft-types",
+    );
+    if (!typesRes) return;
+    const typesData = await typesRes.json();
+
+    const typeSelect = document.querySelector("#filter-aircraft-type");
+    typeSelect.innerHTML = '<option value="">All Aircraft</option>';
+    typesData.types.forEach((type) => {
+      const option = document.createElement("option");
+      option.value = type;
+      option.textContent = type;
+      typeSelect.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Failed to load filter options:", error);
+  }
+}
+
+function applyFilters() {
+  logbookFilters.search = document
+    .querySelector("#logbook-search-input")
+    .value.trim();
+  logbookFilters.airline = document.querySelector("#filter-airline").value;
+  logbookFilters.aircraftType = document.querySelector(
+    "#filter-aircraft-type",
+  ).value;
+  logbookFilters.dateFrom = document.querySelector("#filter-date-from").value;
+  logbookFilters.dateTo = document.querySelector("#filter-date-to").value;
+
+  loadLogbook();
+}
+
+function clearFilters() {
+  logbookFilters = {
+    search: "",
+    airline: "",
+    aircraftType: "",
+    dateFrom: "",
+    dateTo: "",
+  };
+
+  document.querySelector("#logbook-search-input").value = "";
+  document.querySelector("#filter-airline").value = "";
+  document.querySelector("#filter-aircraft-type").value = "";
+  document.querySelector("#filter-date-from").value = "";
+  document.querySelector("#filter-date-to").value = "";
+
+  loadLogbook();
 }
 
 /* ================================================
@@ -1072,6 +1206,7 @@ document
 document
   .querySelector("#nav-logbook")
   .addEventListener("click", () => showView("logbook-view"));
+
 document.querySelector("#sort-toggle-btn").addEventListener("click", () => {
   logbookSort = logbookSort === "desc" ? "asc" : "desc";
   document.querySelector("#sort-toggle-btn").textContent =
@@ -1156,9 +1291,23 @@ document
     pendingRegistration = null;
     showView("register-step1-view");
   });
+document
+  .querySelector("#filters-toggle-btn")
+  .addEventListener("click", toggleFiltersPanel);
+document
+  .querySelector("#apply-filters-btn")
+  .addEventListener("click", applyFilters);
+document
+  .querySelector("#clear-filters-btn")
+  .addEventListener("click", clearFilters);
+document
+  .querySelector("#logbook-search-input")
+  .addEventListener("input", handleSearchInput);
+document
+  .querySelector("#logbook-search-btn")
+  .addEventListener("click", applyFilters);
 
 // Key handlers for Login and Registration
-
 ["#login-id", "#login-pass"].forEach((id) => {
   document.querySelector(id).addEventListener("keydown", (e) => {
     if (e.key === "Enter") userLogin();

@@ -383,20 +383,123 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 0 0 30px 10px;
+  margin: 0 0 30px 0;
 }
 
-.logbook-header h1 {
+#logbook-search {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+#logbook-search-input {
+  width: 100%;
+  min-width: 300px;
   margin: 0;
-  font-size: 26px;
-  font-weight: 700;
 }
 
-.logbook-header #sort-toggle-btn {
+#logbook-search-btn {
+  width: auto;
+  min-width: unset;
+  margin: 0;
+  padding: 0 16px 0 16px;
+}
+
+#logbook-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+#sort-toggle-btn {
   width: auto;
   min-width: 200px;
   margin: 0;
   flex-shrink: 0;
+}
+
+#filters-toggle-btn {
+  width: auto;
+  min-width: 100px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+#filters-panel {
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition:
+    max-height 0.3s ease,
+    margin 0.3s ease,
+    border-color 0.3s ease;
+}
+
+#filters-panel.open {
+  max-height: 300px;
+  margin: 20px 0;
+  border-color: var(--overlay-subtle);
+}
+
+.filters-container {
+  padding: 20px;
+  background-color: var(--color-bg-sidebar);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.filter-group select,
+.filter-group input[type="date"] {
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--overlay-medium);
+  border-radius: 6px;
+  background-color: var(--color-bg-nav);
+  color: var(--color-cream);
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color-scheme: dark;
+}
+
+.filter-group select:focus,
+.filter-group input[type="date"]:focus {
+  outline: none;
+  border-color: var(--color-blue);
+}
+
+.filter-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.filter-actions button {
+  width: auto;
+  min-width: 120px;
+  height: 40px;
+  margin: 0;
 }
 
 .logbook-grid {
@@ -408,7 +511,7 @@ button {
 
 .log-card {
   padding: 16px 18px;
-  border: 1px solid var(--overlay-subtle);
+  border: 1px solid transparent;
   border-radius: 10px;
   text-align: left;
   background-color: var(--color-bg-sidebar);
@@ -479,6 +582,44 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.log-card-photo {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  margin: 16px 0 12px 0;
+  border-radius: 8px;
+  border: 1px solid var(--color-cream);
+  overflow: hidden;
+  background-color: var(--overlay-light);
+}
+
+.log-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.photo-credit {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.6);
+  font-size: 9px;
+  color: var(--color-cream);
 }
 
 .log-delete-btn {
@@ -571,7 +712,7 @@ button {
   justify-content: center;
   gap: 8px;
   padding: 24px 16px;
-  border: 1px solid var(--overlay-subtle);
+  border: 1px solid transparent;
   border-radius: 10px;
   background-color: var(--color-bg-sidebar);
   text-align: center;
@@ -599,7 +740,7 @@ button {
 
 .stats-section-card {
   padding: 20px 20px 16px;
-  border: 1px solid var(--overlay-subtle);
+  border: 1px solid transparent;
   border-radius: 10px;
   background-color: var(--color-bg-sidebar);
 }
@@ -627,7 +768,7 @@ button {
   padding: 14px 4px 10px;
   border-radius: 8px;
   background-color: rgba(121, 190, 238, var(--intensity));
-  border: 1px solid var(--overlay-subtle);
+  border: 1px solid transparent;
 }
 
 .month-count {
@@ -1243,6 +1384,13 @@ footer {
   #logbook-view {
     left: 0;
     bottom: 64px;
+  }
+
+  .logbook-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 20px 0;
   }
 
   #status-area {

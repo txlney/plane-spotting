@@ -256,10 +256,55 @@
 
     <section id="logbook-view" class="hidden">
       <div class="logbook-header">
-        <h1 id="user-logbook-msg">My Logbook</h1>
-        <button id="sort-toggle-btn" class="blue-btn secondary-btn">
-          Viewing: Newest first
-        </button>
+        <div id="logbook-search">
+          <input
+            type="text"
+            id="logbook-search-input"
+            class="secondary-btn"
+            placeholder="Search"
+          />
+          <button id="logbook-search-btn" class="blue-btn secondary-btn">
+            GO
+          </button>
+        </div>
+        <div id="logbook-filters">
+          <button id="filters-toggle-btn" class="yellow-btn secondary-btn">
+            Filters
+          </button>
+          <button id="sort-toggle-btn" class="blue-btn secondary-btn">
+            Viewing: Newest first
+          </button>
+        </div>
+      </div>
+      <div id="filters-panel">
+        <div class="filters-container">
+          <div class="filter-group">
+            <label for="filter-airline">Airline</label>
+            <select id="filter-airline">
+              <option value="">All Airlines</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-aircraft-type">Aircraft Type</label>
+            <select id="filter-aircraft-type">
+              <option value="">All Aircraft</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-date-from">From Date</label>
+            <input type="date" id="filter-date-from" />
+          </div>
+          <div class="filter-group">
+            <label for="filter-date-to">To Date</label>
+            <input type="date" id="filter-date-to" />
+          </div>
+          <div class="filter-actions">
+            <button id="apply-filters-btn" class="yellow-btn">
+              Apply Filters
+            </button>
+            <button id="clear-filters-btn" class="blue-btn">Clear All</button>
+          </div>
+        </div>
       </div>
       <div id="logbook-grid" class="logbook-grid"></div>
     </section>

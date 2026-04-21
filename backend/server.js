@@ -259,6 +259,59 @@ app.get("/api/plane-details/:hex", async (req, res) => {
   }
 });
 
+// Get aircraft photo
+app.get("/api/aircraft-photo/:registration", async (req, res) => {
+  try {
+    const reg = req.params.registration;
+
+    const response = await axios.get(
+      `https://api.planespotters.net/pub/photos/reg/${reg}`,
+      { timeout: 5000 },
+    );
+
+    if (!response.data?.photos || response.data.photos.length === 0) {
+      console.log(`No photos found for ${reg}`);
+      return res.status(404).json({ error: "No photo found" });
+    }
+
+    const photo = response.data.photos[0];
+
+    let photoUrl = null;
+    let width = 0;
+    let height = 0;
+
+    if (photo.thumbnail_large?.src) {
+      photoUrl = photo.thumbnail_large.src;
+      width = photo.thumbnail_large.size?.width || 0;
+      height = photo.thumbnail_large.size?.height || 0;
+    } else if (photo.thumbnail?.src) {
+      photoUrl = photo.thumbnail.src;
+      width = photo.thumbnail.size?.width || 0;
+      height = photo.thumbnail.size?.height || 0;
+    }
+
+    if (!photoUrl) {
+      console.log(`Photo object exists but no valid URL for ${reg}`);
+      return res.status(404).json({ error: "No valid photo URL" });
+    }
+
+    res.json({
+      url: photoUrl,
+      photographer: photo.photographer || "Unknown",
+      link: photo.link || null,
+      width: width,
+      height: height,
+    });
+  } catch (error) {
+    console.error("Photo fetch error:", error.message);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+    }
+    res.status(404).json({ error: "Photo not available" });
+  }
+});
+
 // Log aircraft spot in database
 app.post("/api/log-spot", authenticateToken, async (req, res) => {
   const user_id = req.user.userId;
@@ -316,11 +369,11 @@ app.post("/api/log-spot", authenticateToken, async (req, res) => {
 // Get all user logged spots
 app.get("/api/logbook", authenticateToken, (req, res) => {
   const userId = req.user.userId;
-  const { sort } = req.query;
+  const { sort, search, airline, aircraftType, dateFrom, dateTo } = req.query;
 
   const order = sort === "asc" ? "ASC" : "DESC";
 
-  const sql = `
+  let sql = `
     SELECT
       l.log_id,
       l.log_timestamp,
@@ -338,14 +391,89 @@ app.get("/api/logbook", authenticateToken, (req, res) => {
     LEFT JOIN airlines al ON a.air_airline_icao = al.airline_icao
     LEFT JOIN airports dep_p ON l.log_dep_iata = dep_p.port_iata
     LEFT JOIN airports arr_p ON l.log_arr_iata = arr_p.port_iata
-    WHERE l.user_id = ?
-    ORDER BY l.log_timestamp ${order}`;
+    WHERE l.user_id = ?`;
 
-  db.all(sql, [userId], (error, rows) => {
-    if (error) return res.status(500).json({ error: "Database error" });
+  const params = [userId];
+
+  if (search) {
+    sql += ` AND (
+      l.log_callsign LIKE ? OR 
+      a.air_reg LIKE ? OR 
+      al.airline_name LIKE ?
+    )`;
+    const searchPattern = `%${search}%`;
+    params.push(searchPattern, searchPattern, searchPattern);
+  }
+
+  if (airline) {
+    sql += ` AND al.airline_name = ?`;
+    params.push(airline);
+  }
+
+  if (aircraftType) {
+    sql += ` AND a.air_icao_type = ?`;
+    params.push(aircraftType);
+  }
+
+  if (dateFrom) {
+    sql += ` AND DATE(l.log_timestamp) >= DATE(?)`;
+    params.push(dateFrom);
+  }
+
+  if (dateTo) {
+    sql += ` AND DATE(l.log_timestamp) <= DATE(?)`;
+    params.push(dateTo);
+  }
+
+  sql += ` ORDER BY l.log_timestamp ${order}`;
+
+  db.all(sql, params, (error, rows) => {
+    if (error) {
+      console.error("Logbook query error:", error);
+      return res.status(500).json({ error: "Database error" });
+    }
     res.json({ logs: rows });
   });
 });
+
+// Get users unique airlines
+app.get("/api/logbook/filters/airlines", authenticateToken, (req, res) => {
+  const userId = req.user.userId;
+
+  const sql = `
+    SELECT DISTINCT al.airline_name
+    FROM logs l
+    LEFT JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+    LEFT JOIN airlines al ON a.air_airline_icao = al.airline_icao
+    WHERE l.user_id = ? AND al.airline_name IS NOT NULL
+    ORDER BY al.airline_name ASC`;
+
+  db.all(sql, [userId], (error, rows) => {
+    if (error) return res.status(500).json({ error: "Database error" });
+    res.json({ airlines: rows.map((r) => r.airline_name) });
+  });
+});
+
+// Get users unique aircraft types
+app.get(
+  "/api/logbook/filters/aircraft-types",
+  authenticateToken,
+  (req, res) => {
+    const userId = req.user.userId;
+
+    const sql = `
+    SELECT DISTINCT a.air_icao_type
+    FROM logs l
+    LEFT JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+    WHERE l.user_id = ? AND a.air_icao_type IS NOT NULL
+    ORDER BY a.air_icao_type ASC`;
+
+    db.all(sql, [userId], (error, rows) => {
+      if (error) return res.status(500).json({ error: "Database error" });
+      res.json({ types: rows.map((r) => r.air_icao_type) });
+    });
+  },
+);
 
 // Delete user log entry
 app.delete("/api/log/:logId", authenticateToken, (req, res) => {
