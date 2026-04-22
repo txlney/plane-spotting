@@ -102,21 +102,14 @@ function showView(viewId) {
 function updateNavPfp(pfpUrl) {
   const navIcon = document.querySelector("#nav-profile-icon");
   const navPfp = document.querySelector("#nav-profile-pfp");
-  const mobileIcon = document.querySelector("#mobile-profile-icon");
-  const mobilePfp = document.querySelector("#mobile-profile-pfp");
 
   if (pfpUrl) {
     navIcon.classList.add("hidden");
     navPfp.src = pfpUrl;
     navPfp.classList.remove("hidden");
-    mobileIcon.classList.add("hidden");
-    mobilePfp.src = pfpUrl;
-    mobilePfp.classList.remove("hidden");
   } else {
     navIcon.classList.remove("hidden");
     navPfp.classList.add("hidden");
-    mobileIcon.classList.remove("hidden");
-    mobilePfp.classList.add("hidden");
   }
 }
 
@@ -130,7 +123,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const pfpUrl = localStorage.getItem("pfpUrl") || null;
     initMap();
     document.querySelector("#main-nav").classList.remove("hidden");
-    document.querySelector("#mobile-profile-btn").classList.remove("hidden");
     document.querySelector("footer").classList.remove("hidden");
     document.querySelector("#logged-in-message").innerText =
       `Logged in as:  ${fName}`;
@@ -338,7 +330,6 @@ async function userLogin() {
 
     document.querySelector("footer").classList.remove("hidden");
     document.querySelector("#main-nav").classList.remove("hidden");
-    document.querySelector("#mobile-profile-btn").classList.remove("hidden");
     document.querySelector("#logged-in-message").innerText =
       `Logged in as: ${result.user.fname}`;
     updateNavPfp(result.user.pfpUrl || null);
@@ -353,7 +344,6 @@ async function userLogin() {
 function userLogout() {
   localStorage.clear();
   document.querySelector("#main-nav").classList.add("hidden");
-  document.querySelector("#mobile-profile-btn").classList.add("hidden");
   document.querySelector("footer").classList.add("hidden");
   window.location.reload();
 }
@@ -386,8 +376,8 @@ function initMap() {
 
   map.on("locationerror", (e) => {
     console.warn("Location access denied or failed. Using default location.");
-    map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
-    // map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
+    // map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
+    map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
     refreshFlights();
     // setInterval(refreshFlights, 60000); TURN BACK ON - turned off to protect API limits
   });
@@ -515,6 +505,9 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
 
     panelHeader.innerText = `Flight ${callsign || "Details"}`;
     panelBody.innerHTML = `
+      <div id="panel-photo" class="panel-photo-container">
+        <div class="panel-photo-loading">Loading photo…</div>
+      </div>
       <div class="route-display">
         <div class="route-airport">
           <span class="route-code">${depCode}</span>
@@ -558,6 +551,8 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
       .addEventListener("click", () => {
         confirmSpot();
       });
+
+    if (data.reg_number) fetchPanelPhoto(data.reg_number);
   } catch (error) {
     currentFlightData = {
       hex: hex,
@@ -601,6 +596,30 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
       .addEventListener("click", () => {
         confirmSpot();
       });
+  }
+}
+
+async function fetchPanelPhoto(reg) {
+  const container = document.getElementById("panel-photo");
+  if (!container) return;
+  try {
+    const res = await fetch(`/api/plane-photo/${encodeURIComponent(reg)}`);
+    const data = await res.json();
+    if (data.photo?.url) {
+      const credit = data.photo.photographer
+        ? `<span class="panel-photo-credit">${data.photo.photographer}</span>`
+        : "";
+      container.innerHTML = `
+        <div class="panel-photo-wrap">
+          <img class="panel-photo-img" src="${data.photo.url}" alt="Aircraft photo"
+            onerror="this.closest('.panel-photo-container').remove()" />
+          ${credit}
+        </div>`;
+    } else {
+      container.remove();
+    }
+  } catch {
+    container.remove();
   }
 }
 
@@ -668,6 +687,17 @@ function renderLogbookGrid(logs) {
         "—";
       const reg = log.air_reg || "—";
 
+      const photoHtml = log.air_photo_url
+        ? `<div class="log-card-photo">
+            <img
+              src="${log.air_photo_url}"
+              alt="Aircraft ${reg}"
+              class="log-card-img"
+              onerror="this.parentElement.innerHTML='<div class=\\'photo-placeholder\\'>Photo unavailable</div>'"
+            />
+          </div>`
+        : `<div class="log-card-photo"><div class="photo-placeholder">No photo available</div></div>`;
+
       return `
       <div class="log-card">
         <div class="log-card-header">
@@ -680,7 +710,7 @@ function renderLogbookGrid(logs) {
           <span class="log-card-arrow">&rarr;</span>
           <span class="log-card-iata">${arr}</span>
         </div>
-        ${log.air_reg ? `<div class="log-card-photo" data-reg="${log.air_reg}"><div class="photo-placeholder">Loading...</div></div>` : ""}
+        ${photoHtml}
         <div class="log-card-footer">
           <p class="log-card-detail">${model} &middot; ${reg}</p>
           <button class="log-delete-btn" data-log-id="${log.log_id}">Delete</button>
@@ -688,9 +718,6 @@ function renderLogbookGrid(logs) {
       </div>`;
     })
     .join("");
-
-  const uniqueRegs = [...new Set(logs.map((l) => l.air_reg).filter(Boolean))];
-  uniqueRegs.forEach((reg) => loadAircraftPhoto(reg));
 
   document.querySelectorAll(".log-delete-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -703,29 +730,6 @@ function renderLogbookGrid(logs) {
 function toggleFiltersPanel() {
   const panel = document.querySelector("#filters-panel");
   panel.classList.toggle("open");
-}
-
-async function loadAircraftPhoto(registration) {
-  const containers = document.querySelectorAll(`[data-reg="${registration}"]`);
-  if (!containers.length) return;
-
-  const setAll = (html) => containers.forEach((c) => (c.innerHTML = html));
-
-  try {
-    const response = await fetch(`/api/aircraft-photo/${registration}`);
-
-    if (response.ok) {
-      const data = await response.json();
-      setAll(`
-        <img src="${data.url}" alt="Aircraft ${registration}" class="log-card-img" />
-        <span class="photo-credit">${data.photographer}</span>
-      `);
-    } else {
-      setAll(`<div class="photo-placeholder">No photo available</div>`);
-    }
-  } catch {
-    setAll(`<div class="photo-placeholder">Photo unavailable</div>`);
-  }
 }
 
 async function loadLogbook() {
@@ -810,6 +814,31 @@ async function loadFilterOptions() {
     });
   } catch (error) {
     console.error("Failed to load filter options:", error);
+  }
+}
+
+async function exportLogbook() {
+  try {
+    const response = await authenticatedFetch("/api/logbook/export");
+    if (!response) return;
+
+    const blob = await response.blob();
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `skylog-logbook-${new Date().toISOString().split("T")[0]}.csv`;
+
+    document.body.appendChild(a);
+    a.click();
+
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    console.log("Logbook exported successfully");
+  } catch (error) {
+    console.error("Export failed:", error);
+    alert("Failed to export logbook. Please try again.");
   }
 }
 
@@ -1223,9 +1252,6 @@ document
   .querySelector("#nav-profile")
   .addEventListener("click", () => showView("profile-view"));
 document
-  .querySelector("#mobile-profile-btn")
-  .addEventListener("click", () => showView("profile-view"));
-document
   .querySelector("#panel-close-btn")
   .addEventListener("click", closePanel);
 document.querySelector("#login-btn").addEventListener("click", userLogin);
@@ -1304,8 +1330,8 @@ document
   .querySelector("#logbook-search-input")
   .addEventListener("input", handleSearchInput);
 document
-  .querySelector("#logbook-search-btn")
-  .addEventListener("click", applyFilters);
+  .querySelector("#export-logbook-btn")
+  .addEventListener("click", exportLogbook);
 
 // Key handlers for Login and Registration
 ["#login-id", "#login-pass"].forEach((id) => {

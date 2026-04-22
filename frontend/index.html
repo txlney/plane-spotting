@@ -99,21 +99,6 @@
       </div>
     </nav>
 
-    <button id="mobile-profile-btn" class="hidden" aria-label="Profile">
-      <img
-        src="img/user-svgrepo-com.svg"
-        alt="Profile Icon"
-        class="mobile-profile-icon"
-        id="mobile-profile-icon"
-      />
-      <img
-        src=""
-        alt="Profile Picture"
-        class="mobile-profile-icon nav-pfp hidden"
-        id="mobile-profile-pfp"
-      />
-    </button>
-
     <section id="login-view" class="auth">
       <div id="login-form">
         <img class="logo" src="img/logo-cream.png" alt="SkyLog logo" />
@@ -263,9 +248,6 @@
             class="secondary-btn"
             placeholder="Search"
           />
-          <button id="logbook-search-btn" class="blue-btn secondary-btn">
-            GO
-          </button>
         </div>
         <div id="logbook-filters">
           <button id="filters-toggle-btn" class="yellow-btn secondary-btn">
@@ -273,6 +255,9 @@
           </button>
           <button id="sort-toggle-btn" class="blue-btn secondary-btn">
             Viewing: Newest first
+          </button>
+          <button id="export-logbook-btn" class="clear-btn secondary-btn">
+            Export CSV
           </button>
         </div>
       </div>
@@ -299,10 +284,10 @@
             <input type="date" id="filter-date-to" />
           </div>
           <div class="filter-actions">
-            <button id="apply-filters-btn" class="yellow-btn">
+            <button id="apply-filters-btn" class="blue-btn">
               Apply Filters
             </button>
-            <button id="clear-filters-btn" class="blue-btn">Clear All</button>
+            <button id="clear-filters-btn" class="clear-btn">Clear All</button>
           </div>
         </div>
       </div>

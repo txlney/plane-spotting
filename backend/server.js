@@ -259,56 +259,26 @@ app.get("/api/plane-details/:hex", async (req, res) => {
   }
 });
 
-// Get aircraft photo
-app.get("/api/aircraft-photo/:registration", async (req, res) => {
+// Fetch aircraft photo from planespotters.net
+app.get("/api/plane-photo/:reg", async (req, res) => {
+  const reg = req.params.reg;
   try {
-    const reg = req.params.registration;
-
     const response = await axios.get(
-      `https://api.planespotters.net/pub/photos/reg/${reg}`,
+      `https://api.planespotters.net/pub/photos/reg/${encodeURIComponent(reg)}`,
       { timeout: 5000 },
     );
-
-    if (!response.data?.photos || response.data.photos.length === 0) {
-      console.log(`No photos found for ${reg}`);
-      return res.status(404).json({ error: "No photo found" });
-    }
-
-    const photo = response.data.photos[0];
-
-    let photoUrl = null;
-    let width = 0;
-    let height = 0;
-
-    if (photo.thumbnail_large?.src) {
-      photoUrl = photo.thumbnail_large.src;
-      width = photo.thumbnail_large.size?.width || 0;
-      height = photo.thumbnail_large.size?.height || 0;
-    } else if (photo.thumbnail?.src) {
-      photoUrl = photo.thumbnail.src;
-      width = photo.thumbnail.size?.width || 0;
-      height = photo.thumbnail.size?.height || 0;
-    }
-
-    if (!photoUrl) {
-      console.log(`Photo object exists but no valid URL for ${reg}`);
-      return res.status(404).json({ error: "No valid photo URL" });
-    }
-
+    const photo = response.data?.photos?.[0];
+    if (!photo) return res.json({ photo: null });
     res.json({
-      url: photoUrl,
-      photographer: photo.photographer || "Unknown",
-      link: photo.link || null,
-      width: width,
-      height: height,
+      photo: {
+        url: photo.thumbnail_large?.src || photo.thumbnail?.src || null,
+        photographer: photo.photographer || null,
+        link: photo.link || null,
+      },
     });
   } catch (error) {
-    console.error("Photo fetch error:", error.message);
-    if (error.response) {
-      console.error("Response status:", error.response.status);
-      console.error("Response data:", error.response.data);
-    }
-    res.status(404).json({ error: "Photo not available" });
+    console.error(`Photo fetch error for ${reg}:`, error.message);
+    res.json({ photo: null });
   }
 });
 
@@ -333,10 +303,28 @@ app.post("/api/log-spot", authenticateToken, async (req, res) => {
 
   const safeNotes = sanitiseInput(notes || "");
 
+  let photoUrl = null;
+  if (reg) {
+    try {
+      const photoResponse = await axios.get(
+        `https://api.planespotters.net/pub/photos/reg/${reg}`,
+        { timeout: 5000 },
+      );
+      const photo = photoResponse.data?.photos?.[0];
+      if (photo) {
+        photoUrl = photo.thumbnail_large?.src || photo.thumbnail?.src || null;
+      }
+    } catch (error) {
+      console.error(`Could not fetch photo for ${reg}: ${error.message}`);
+    }
+  }
+
   const aircraftSql = `
-    INSERT OR IGNORE INTO aircraft
-      (air_icao24_hex, air_reg, air_airline_icao, air_icao_type, air_manufacturer, air_age)
-      VALUES (?, ?, ?, ?, ?, ?)`;
+    INSERT INTO aircraft
+      (air_icao24_hex, air_reg, air_airline_icao, air_icao_type, air_manufacturer, air_age, air_photo_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(air_icao24_hex) DO UPDATE SET
+      air_photo_url = COALESCE(excluded.air_photo_url, aircraft.air_photo_url)`;
 
   const logSql = `
     INSERT INTO logs
@@ -346,7 +334,7 @@ app.post("/api/log-spot", authenticateToken, async (req, res) => {
   db.serialize(() => {
     db.run(
       aircraftSql,
-      [hex, reg, airline, type, manufacturer, age],
+      [hex, reg, airline, type, manufacturer, age, photoUrl],
       (error) => {
         if (error) return res.status(500).json({ error: error.message });
 
@@ -383,6 +371,7 @@ app.get("/api/logbook", authenticateToken, (req, res) => {
       a.air_reg,
       a.air_icao_type,
       a.air_manufacturer,
+      a.air_photo_url,
       al.airline_name,
       dep_p.port_name AS dep_name,
       arr_p.port_name AS arr_name
@@ -491,6 +480,88 @@ app.delete("/api/log/:logId", authenticateToken, (req, res) => {
       res.json({ message: "Log entry deleted successfully." });
     },
   );
+});
+
+// Export logbook to CSV
+app.get("/api/logbook/export", authenticateToken, (req, res) => {
+  const userId = req.user.userId;
+
+  const sql = `
+    SELECT
+      l.log_timestamp,
+      l.log_callsign,
+      al.airline_name,
+      a.air_reg,
+      a.air_icao_type,
+      a.air_manufacturer,
+      l.log_dep_iata,
+      dep_p.port_name AS dep_name,
+      l.log_arr_iata,
+      arr_p.port_name AS arr_name,
+      l.log_altitude,
+      l.log_latitude,
+      l.log_longitude,
+      l.log_notes
+    FROM logs l
+    LEFT JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+    LEFT JOIN airlines al ON a.air_airline_icao = al.airline_icao
+    LEFT JOIN airports dep_p ON l.log_dep_iata = dep_p.port_iata
+    LEFT JOIN airports arr_p ON l.log_arr_iata = arr_p.port_iata
+    WHERE l.user_id = ?
+    ORDER BY l.log_timestamp DESC`;
+
+  db.all(sql, [userId], (error, rows) => {
+    if (error) {
+      console.error("Export error:", error);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    const headers = [
+      "Timestamp",
+      "Callsign",
+      "Airline",
+      "Registration",
+      "Aircraft Type",
+      "Manufacturer",
+      "Departure Code",
+      "Departure Airport",
+      "Arrival Code",
+      "Arrival Airport",
+      "Altitude (m)",
+      "Latitude",
+      "Longitude",
+      "Notes",
+    ];
+
+    let csv = headers.join(",") + "\n";
+
+    rows.forEach((row) => {
+      const values = [
+        row.log_timestamp || "",
+        row.log_callsign || "",
+        row.airline_name || "",
+        row.air_reg || "",
+        row.air_icao_type || "",
+        row.air_manufacturer || "",
+        row.log_dep_iata || "",
+        row.dep_name || "",
+        row.log_arr_iata || "",
+        row.arr_name || "",
+        row.log_altitude || "",
+        row.log_latitude || "",
+        row.log_longitude || "",
+        `"${(row.log_notes || "").replace(/"/g, '""')}"`,
+      ];
+      csv += values.join(",") + "\n";
+    });
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="skylog-logbook-${new Date().toISOString().split("T")[0]}.csv"`,
+    );
+    res.send(csv);
+  });
 });
 
 // Register user into database & hash password
