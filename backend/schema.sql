@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS aircraft (
     air_icao_type TEXT,
     air_manufacturer TEXT,
     air_age INT,
+    air_photo_url TEXT,
     FOREIGN KEY (air_airline_icao) REFERENCES airlines(airline_icao)
 );
 
