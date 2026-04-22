@@ -225,6 +225,34 @@
     </section>
 
     <section id="map-view" class="hidden">
+      <div id="map-search-container">
+        <button
+          id="map-search-toggle"
+          class="map-search-toggle-btn"
+          aria-label="Toggle search"
+        >
+          GO
+        </button>
+        <div id="map-search-panel" class="map-search-panel">
+          <div class="map-search-row">
+            <input
+              type="text"
+              id="map-search-input"
+              placeholder="Search callsign or registration"
+              autocomplete="off"
+            />
+            <button id="map-search-btn" class="blue-btn">Search</button>
+            <button
+              id="map-search-clear"
+              class="map-search-clear-btn"
+              aria-label="Clear search"
+            >
+              X
+            </button>
+          </div>
+          <div id="map-search-message" class="map-search-message hidden"></div>
+        </div>
+      </div>
       <div id="map"></div>
       <div id="status-area">
         <div id="status-area-content">

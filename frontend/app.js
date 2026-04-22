@@ -1,6 +1,7 @@
 let map;
 let markerGroup;
 let currentFlightData = null;
+let currentMapAircraft = [];
 let pendingRegistration = null;
 let selectedMarker = null;
 let logbookSort = "desc";
@@ -376,8 +377,8 @@ function initMap() {
 
   map.on("locationerror", (e) => {
     console.warn("Location access denied or failed. Using default location.");
-    // map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
-    map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
+    map.setView([27.9759, -82.5033], 12); // tampa bay buccaneers facilities because i can
+    // map.setView([-33.9318, 151.18133], 12); // sydney airport for development at night
     refreshFlights();
     // setInterval(refreshFlights, 60000); TURN BACK ON - turned off to protect API limits
   });
@@ -422,6 +423,197 @@ function closePanel() {
   }
 }
 
+// Toggle search feature for map (mobile only)
+function toggleMapSearch() {
+  if (window.innerWidth > 768) return;
+
+  const panel = document.querySelector("#map-search-panel");
+  const message = document.querySelector("#map-search-message");
+
+  panel.classList.toggle("hidden");
+  message.classList.add("hidden");
+
+  if (!panel.classList.contains("hidden")) {
+    document.querySelector("#map-search-input").focus();
+  }
+}
+
+// Search for aircraft on map
+async function searchMapAircraft() {
+  const searchTerm = document
+    .querySelector("#map-search-input")
+    .value.trim()
+    .toUpperCase();
+
+  if (!searchTerm) {
+    showMapSearchMessage("Please enter a callsign or registration", "error");
+    return;
+  }
+
+  if (searchTerm.length < 2) {
+    showMapSearchMessage("Search term must be at least 2 characters", "error");
+    return;
+  }
+
+  // local search before using more api credits
+  const localMatch = currentMapAircraft.find((aircraft) => {
+    const callsignMatch =
+      aircraft.callsign && aircraft.callsign.toUpperCase().includes(searchTerm);
+    const hexMatch =
+      aircraft.hex && aircraft.hex.toUpperCase().includes(searchTerm);
+    return callsignMatch || hexMatch;
+  });
+
+  if (localMatch) {
+    map.setView([localMatch.lat, localMatch.lon], 13, {
+      animate: true,
+      duration: 1,
+    });
+
+    if (selectedMarker) selectedMarker.setIcon(planeIcon);
+    localMatch.marker.setIcon(planeIconSelected);
+    selectedMarker = localMatch.marker;
+
+    getRichDetails(
+      localMatch.hex,
+      localMatch.lat,
+      localMatch.lon,
+      localMatch.alt,
+      localMatch.callsign,
+    );
+    showMapSearchMessage(
+      `Found ${localMatch.callsign} on current map`,
+      "success",
+    );
+
+    setTimeout(() => {
+      document.querySelector("#map-search-input").value = "";
+      document.querySelector("#map-search-message").classList.add("hidden");
+    }, 3000);
+    return;
+  }
+
+  // global search
+  showMapSearchMessage("Not on current map, searching globally...", "error");
+
+  try {
+    const response = await authenticatedFetch(
+      `/api/search-flight/${encodeURIComponent(searchTerm)}`,
+    );
+
+    if (!response || !response.ok) {
+      const errorData = await response?.json();
+
+      if (response?.status === 429) {
+        showMapSearchMessage(
+          "Rate limit reached. Please wait and try again.",
+          "error",
+        );
+        return;
+      }
+
+      if (response?.status === 404) {
+        showMapSearchMessage(
+          errorData?.error ||
+            `${searchTerm} not found. Aircraft may be grounded or incorrect search term.`,
+          "error",
+        );
+        return;
+      }
+
+      showMapSearchMessage("Search failed. Please try again.", "error");
+      return;
+    }
+
+    const aircraft = await response.json();
+
+    if (!aircraft.latitude || !aircraft.longitude) {
+      showMapSearchMessage("Aircraft found but position unavailable.", "error");
+      return;
+    }
+
+    if (aircraft.onGround) {
+      showMapSearchMessage(
+        `${aircraft.callsign} found but currently on the ground. Panning to last known location...`,
+        "success",
+      );
+    } else {
+      showMapSearchMessage(
+        `Found ${aircraft.callsign}! Panning to location...`,
+        "success",
+      );
+    }
+
+    map.setView([aircraft.latitude, aircraft.longitude], 10, {
+      animate: true,
+      duration: 2,
+    });
+
+    setTimeout(() => {
+      refreshFlights();
+
+      setTimeout(() => {
+        const nowVisible = currentMapAircraft.find(
+          (a) =>
+            a.hex.toLowerCase() === aircraft.hex.toLowerCase() ||
+            (a.callsign &&
+              aircraft.callsign &&
+              a.callsign.toUpperCase() === aircraft.callsign.toUpperCase()),
+        );
+
+        if (nowVisible) {
+          if (selectedMarker) selectedMarker.setIcon(planeIcon);
+          nowVisible.marker.setIcon(planeIconSelected);
+          selectedMarker = nowVisible.marker;
+          getRichDetails(
+            nowVisible.hex,
+            nowVisible.lat,
+            nowVisible.lon,
+            nowVisible.alt,
+            nowVisible.callsign,
+          );
+
+          showMapSearchMessage(
+            `${aircraft.callsign} located and selected!`,
+            "success",
+          );
+        } else {
+          showMapSearchMessage(
+            `Panned to ${aircraft.callsign}'s location. Aircraft may be grounded or below altitude filter.`,
+            "success",
+          );
+        }
+
+        setTimeout(() => {
+          document.querySelector("#map-search-input").value = "";
+        }, 3000);
+      }, 1500);
+    }, 2500);
+  } catch (error) {
+    console.error("Global search failed:", error);
+    showMapSearchMessage("Global search failed. Please try again.", "error");
+  }
+}
+
+// Show message in search container
+function showMapSearchMessage(text, type) {
+  const messageEl = document.querySelector("#map-search-message");
+  messageEl.textContent = text;
+  messageEl.className = `map-search-message ${type}`;
+  messageEl.classList.remove("hidden");
+
+  setTimeout(() => {
+    messageEl.classList.add("hidden");
+  }, 4000);
+}
+
+// Clear map search bar
+function clearMapSearch() {
+  document.querySelector("#map-search-input").value = "";
+  document.querySelector("#map-search-message").classList.add("hidden");
+  document.querySelector("#map-search-input").focus();
+}
+
 // Update map every 60 seconds (disabled temporarily)
 async function refreshFlights() {
   try {
@@ -437,6 +629,13 @@ async function refreshFlights() {
     const flights = await response.json();
 
     markerGroup.clearLayers();
+    currentMapAircraft = [];
+
+    const minAltitude = localStorage.getItem("minAltitude") || 350; // altitude in meters
+    const showAllAircraft = localStorage.getItem("showAllAircraft") || "false";
+
+    let totalAircraft = 0;
+    let filteredAircraft = 0;
 
     flights.forEach((f) => {
       const hex = f[0];
@@ -444,6 +643,15 @@ async function refreshFlights() {
       const lon = f[5];
       const alt = f[7];
       const callsign = f[1] ? f[1].trim() : "Unknown";
+
+      totalAircraft++;
+
+      if (showAllAircraft !== "true") {
+        if (alt === null || alt < minAltitude) {
+          filteredAircraft++;
+          return;
+        }
+      }
 
       if (lat !== null && lon !== null) {
         const heading = f[10] || 0;
@@ -458,10 +666,21 @@ async function refreshFlights() {
             getRichDetails(hex, lat, lon, alt, callsign);
           })
           .addTo(markerGroup);
+
+        currentMapAircraft.push({
+          hex: hex,
+          callsign: callsign,
+          lat: lat,
+          lon: lon,
+          alt: alt,
+          marker: marker,
+        });
       }
     });
 
-    console.log("Refreshed flights successfully.");
+    console.log(
+      `Refreshed flights successfully. ${totalAircraft} total, ${filteredAircraft} filtered.`,
+    );
   } catch (error) {
     console.error("Loop error:", error);
   }
@@ -599,6 +818,7 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
   }
 }
 
+// Get aircraft photo for side panel
 async function fetchPanelPhoto(reg) {
   const container = document.getElementById("panel-photo");
   if (!container) return;
@@ -1235,7 +1455,15 @@ document
 document
   .querySelector("#nav-logbook")
   .addEventListener("click", () => showView("logbook-view"));
-
+document
+  .querySelector("#map-search-toggle")
+  .addEventListener("click", toggleMapSearch);
+document
+  .querySelector("#map-search-btn")
+  .addEventListener("click", searchMapAircraft);
+document
+  .querySelector("#map-search-clear")
+  .addEventListener("click", clearMapSearch);
 document.querySelector("#sort-toggle-btn").addEventListener("click", () => {
   logbookSort = logbookSort === "desc" ? "asc" : "desc";
   document.querySelector("#sort-toggle-btn").textContent =
@@ -1333,7 +1561,7 @@ document
   .querySelector("#export-logbook-btn")
   .addEventListener("click", exportLogbook);
 
-// Key handlers for Login and Registration
+// Key handlers
 ["#login-id", "#login-pass"].forEach((id) => {
   document.querySelector(id).addEventListener("keydown", (e) => {
     if (e.key === "Enter") userLogin();
@@ -1350,4 +1578,14 @@ document
   document.querySelector(id).addEventListener("keydown", (e) => {
     if (e.key === "Enter") userRegisterStep2();
   });
+});
+
+document.querySelector("#map-search-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    searchMapAircraft();
+  }
+
+  if (e.key === "Escape") {
+    toggleMapSearch();
+  }
 });

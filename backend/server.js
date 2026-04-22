@@ -259,6 +259,216 @@ app.get("/api/plane-details/:hex", async (req, res) => {
   }
 });
 
+// Search for a specific flight
+app.get("/api/search-flight/:query", authenticateToken, async (req, res) => {
+  try {
+    const query = req.params.query.toUpperCase().trim();
+
+    if (!query || query.length < 2) {
+      return res.status(400).json({ error: "Search term too short" });
+    }
+    console.log(`Global search for: ${query}`);
+
+    // multiple search methods
+    let hex = null;
+    let callsign = null;
+    let searchMethod = null;
+    let airlabsPosition = null; // fallback if OpenSky has no data
+
+    // method 1 - direct hex search
+    if (/^[a-f0-9]{6}$/i.test(query)) {
+      hex = query.toLowerCase();
+      searchMethod = "direct_hex";
+      console.log("Search term looks to be a hex code");
+    }
+
+    // method 2 - search database for already logged aircraft
+    if (!hex) {
+      try {
+        const cached = await dbGet(
+          `SELECT DISTINCT l.air_icao24_hex, l.log_callsign
+          FROM logs l
+          LEFT JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+          WHERE UPPER(l.log_callsign) LIKE ?
+          OR UPPER(a.air_reg) LIKE ?
+          LIMIT 1`,
+          [`%${query}%`, `%${query}%`],
+        );
+
+        if (cached && cached.air_icao24_hex) {
+          hex = cached.air_icao24_hex;
+          callsign = cached.log_callsign;
+          searchMethod = "database_cache";
+          console.log(`Found in database cache: ${callsign} (${hex})`);
+        }
+      } catch (dbError) {
+        console.log("Database cache check failed:", dbError.message);
+      }
+    }
+
+    // method 3 - airlabs query by flight number to get hex
+    if (!hex) {
+      try {
+        console.log("Searching AirLabs for flight...");
+
+        let airlabsResponse = await axios.get(
+          "https://airlabs.co/api/v9/flights",
+          {
+            params: {
+              api_key: process.env.AIRLABS_API_KEY,
+              flight_iata: query,
+            },
+            timeout: 5000,
+          },
+        );
+
+        if (
+          !airlabsResponse.data?.response ||
+          airlabsResponse.data.response.length === 0
+        ) {
+          airlabsResponse = await axios.get(
+            "https://airlabs.co/api/v9/flights",
+            {
+              params: {
+                api_key: process.env.AIRLABS_API_KEY,
+                flight_icao: query,
+              },
+              timeout: 5000,
+            },
+          );
+        }
+
+        if (
+          airlabsResponse.data?.response &&
+          airlabsResponse.data.response.length > 0
+        ) {
+          const flight = airlabsResponse.data.response[0];
+          hex = flight.hex;
+          callsign = flight.flight_iata || flight.flight_icao || query;
+          searchMethod = "airlabs_flight";
+          console.log(`AirLabs found flight: ${callsign} (${hex})`);
+          if (flight.lat != null && flight.lng != null) {
+            airlabsPosition = {
+              latitude: flight.lat,
+              longitude: flight.lng,
+              altitude: flight.alt ?? null,
+              heading: flight.dir ?? 0,
+              velocity: flight.speed ?? null,
+              onGround: flight.status === "landed",
+            };
+          }
+        }
+      } catch (airlabsError) {
+        console.log("Airlabs flight search failed:", airlabsError.message);
+      }
+    }
+
+    // method 4 - airlabs query by reg number
+    if (!hex) {
+      try {
+        console.log("Searching Airlabs by registration...");
+        const airlabsResponse = await axios.get(
+          "https://airlabs.co/api/v9/fleet",
+          {
+            params: {
+              api_key: process.env.AIRLABS_API_KEY,
+              reg_number: query,
+            },
+            timeout: 5000,
+          },
+        );
+
+        if (
+          airlabsResponse.data?.response &&
+          airlabsResponse.data.response.length > 0
+        ) {
+          const aircraft = airlabsResponse.data.response[0];
+          hex = aircraft.hex;
+          callsign = aircraft.reg_number || query;
+          searchMethod = "airlabs_registration";
+          console.log(`Airlabs found registration: ${callsign} (${hex})`);
+        }
+      } catch (airlabsError) {
+        console.log(
+          "Airlabs registration search failed:",
+          airlabsError.message,
+        );
+      }
+    }
+
+    if (!hex) {
+      return res.status(404).json({
+        error: "Aircraft not found. Check the callsign or registration.",
+        searchedFor: query,
+      });
+    }
+
+    // querying opensky with the found hex code
+    console.log(`Querying OpenSky for hex: ${hex}`);
+
+    const auth = {
+      username: process.env.OPENSKY_USERNAME,
+      password: process.env.OPENSKY_PASSWORD,
+    };
+
+    const openskyResponse = await axios.get(
+      "https://opensky-network.org/api/states/all",
+      {
+        params: { icao24: hex },
+        auth: auth,
+        timeout: 10000,
+      },
+    );
+
+    if (
+      !openskyResponse.data?.states ||
+      openskyResponse.data.states.length === 0
+    ) {
+      if (airlabsPosition) {
+        console.log(`OpenSky had no data for ${hex}, using AirLabs position`);
+        return res.json({
+          hex: hex,
+          callsign: callsign || query,
+          ...airlabsPosition,
+          searchMethod: searchMethod,
+        });
+      }
+      return res.status(404).json({
+        error: `Aircraft ${callsign || query} found but not currently airbourne or not transmitting position`,
+        hex: hex,
+        method: searchMethod,
+      });
+    }
+
+    const aircraft = openskyResponse.data.states[0];
+
+    res.json({
+      hex: aircraft[0],
+      callsign: aircraft[1] ? aircraft[1].trim() : callsign || query,
+      latitude: aircraft[6],
+      longitude: aircraft[5],
+      altitude: aircraft[7],
+      heading: aircraft[10] || 0,
+      velocity: aircraft[9],
+      searchMethod: searchMethod,
+      onGround: aircraft[8] || false,
+    });
+  } catch (error) {
+    console.error("Global search error:", error.message);
+
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        error: "Rate limit exceeded. Please wait a moment and try again.",
+      });
+    }
+
+    res.status(500).json({
+      error: "Search failed. Please try again.",
+      details: error.message,
+    });
+  }
+});
+
 // Fetch aircraft photo from planespotters.net
 app.get("/api/plane-photo/:reg", async (req, res) => {
   const reg = req.params.reg;

@@ -12,10 +12,10 @@
   --color-success: #6ecf7a;
 
   /* ==== Surface/background colours ==== */
-  --color-bg-nav: #264168;
-  --color-bg-nav-hover: #213858;
-  --color-bg-sidebar: #1d314e;
-  --color-bg-sidebar-hover: #253d60;
+  --color-bg-nav: #1d314e;
+  --color-bg-nav-hover: #253d60;
+  --color-bg-sidebar: #264168;
+  --color-bg-sidebar-hover: #213858;
 
   /* ==== Text colours ==== */
   --color-text-muted: #a4a192;
@@ -334,6 +334,139 @@ button {
   );
   box-shadow: inset 3px 0 0 var(--color-blue);
   color: var(--color-blue);
+}
+
+/* =====================================================
+                      MAP SEARCH BAR
+===================================================== */
+
+#map-search-container {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.map-search-toggle-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  min-width: unset;
+  max-width: unset;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  background-color: var(--color-bg-nav);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.map-search-toggle-btn:hover {
+  background-color: var(--color-bg-nav-hover);
+  transform: scale(1.05);
+}
+
+.map-search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--color-bg-nav);
+  box-shadow: 0 2px 8px var(--shadow-medium);
+}
+
+.map-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+#map-search-input {
+  flex: 1;
+  height: 40px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--overlay-medium);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--color-cream);
+  background-color: var(--color-bg-sidebar);
+}
+
+#map-search-input::placeholder {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+#map-search-input:focus {
+  outline: none;
+  border-color: var(--color-blue);
+}
+
+#map-search-btn {
+  width: auto;
+  min-width: 80px;
+  height: 40px;
+  margin: 0;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.map-search-clear-btn {
+  width: 32px;
+  height: 32px;
+  min-width: unset;
+  max-width: unset;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.map-search-clear-btn:hover {
+  color: var(--color-cream);
+  background-color: var(--overlay-medium);
+  transform: none;
+}
+
+.map-search-message {
+  padding: 6px 2px 0;
+  font-size: 12px;
+  font-weight: 500;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  animation: fadeIn 0.2s ease;
+}
+
+.map-search-message.hidden {
+  display: none;
+}
+
+.map-search-message.success {
+  color: var(--color-success);
+}
+
+.map-search-message.error {
+  color: var(--color-error);
 }
 
 /* =====================================================
@@ -1466,6 +1599,46 @@ footer {
     bottom: 64px;
   }
 
+  #map-search-container {
+    top: 12px;
+    width: calc(100% - 24px);
+  }
+
+  .map-search-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .map-search-panel.hidden {
+    display: none;
+  }
+
+  .map-search-message {
+    padding: 10px 16px;
+    border-radius: 6px;
+    background-color: var(--color-bg-nav);
+    box-shadow: 0 2px 6px var(--shadow-medium);
+  }
+
+  .map-search-message.success {
+    border: 1px solid var(--color-success);
+  }
+
+  .map-search-message.error {
+    border: 1px solid var(--color-error);
+  }
+
+  #map-search-input::placeholder {
+    font-size: 12px;
+  }
+
+  #map-search-btn {
+    min-width: 70px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
   #logbook-view {
     left: 0;
     bottom: 64px;
@@ -1590,9 +1763,8 @@ footer {
     font-size: 13px;
   }
 
-  #profile-view {
-    left: 0;
-    bottom: 64px;
+  #user-stats-msg {
+    display: none;
   }
 
   .profile-header h1 {
