@@ -247,7 +247,7 @@
               class="map-search-clear-btn"
               aria-label="Clear search"
             >
-              X
+              &#x2715;
             </button>
           </div>
           <div id="map-search-message" class="map-search-message hidden"></div>
@@ -281,9 +281,13 @@
           <button id="filters-toggle-btn" class="yellow-btn secondary-btn">
             Filters
           </button>
-          <button id="sort-toggle-btn" class="blue-btn secondary-btn">
-            Viewing: Newest first
-          </button>
+          <div class="sort-view-row">
+            <button id="sort-toggle-btn" class="blue-btn secondary-btn">
+              Viewing: Newest first
+            </button>
+            <button id="view-toggle-btn" class="clear-btn secondary-btn view-toggle-btn" title="Switch to list view">
+            </button>
+          </div>
           <button id="export-logbook-btn" class="clear-btn secondary-btn">
             Export CSV
           </button>
@@ -355,8 +359,129 @@
     </section>
 
     <section id="settings-view" class="hidden">
-      <div class="settings-header">
-        <h1>Application Settings</h1>
+      <div class="settings-container">
+        <h1>SkyLog Settings</h1>
+        <div class="settings-section">
+          <h2 class="settings-section-title">Map Preferences</h2>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Show All Aircraft</span>
+              <span class="setting-description"
+                >Include ground traffic and low-altitude aircraft</span
+              >
+            </div>
+            <label class="toggle-switch" for="show-all-aircraft-toggle">
+              <input type="checkbox" id="show-all-aircraft-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Map Theme</span>
+              <span class="setting-description"
+                >Choose light or dark map style</span
+              >
+            </div>
+            <select id="map-theme-select" class="setting-select">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Plane Icon Colour</span>
+              <span class="setting-description"
+                >Customise aircraft marker colour</span
+              >
+            </div>
+            <div id="colour-row">
+              <button id="reset-colour">Reset to default</button>
+              <input
+                type="color"
+                id="plane-icon-color"
+                class="setting-colour-picker"
+                value="#f9d01a"
+              />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Altitude Unit</span>
+              <span class="setting-description"
+                >Display altitude values in meters or feet</span
+              >
+            </div>
+            <select id="altitude-unit-select" class="setting-select">
+              <option value="meters">Meters (m)</option>
+              <option value="feet">Feet (ft)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Speed Unit</span>
+              <span class="setting-description"
+                >Display speed values in knots, mph or km/h</span
+              >
+            </div>
+            <select id="speed-unit-select" class="setting-select">
+              <option value="knots">Knots (kts)</option>
+              <option value="mph">Miles/hour (mph)</option>
+              <option value="kmh">Kilometers/hour (km/h)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2 class="settings-section-title">Data & Export</h2>
+          <div class="setting-row">
+            <button
+              id="export-logbook-settings-btn"
+              class="secondary-btn clear-btn"
+            >
+              Export Logbook (CSV)
+            </button>
+            <span class="setting-description"
+              >Download your logbook data as a CSV file</span
+            >
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2 class="settings-section-title">Account Settings</h2>
+          <div class="setting-row">
+            <button
+              id="change-password-settings-btn"
+              class="secondary-btn blue-btn"
+            >
+              Change Password
+            </button>
+          </div>
+          <div class="setting-row">
+            <button id="logout-settings-btn" class="secondary-btn clear-btn">
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-section danger-zone">
+          <h2 class="settings-section-title">Danger Zone</h2>
+          <div class="setting-row">
+            <button
+              id="delete-account-settings-btn"
+              class="secondary-btn delete-btn"
+            >
+              Delete Account
+            </button>
+            <span class="setting-description delete-warning">
+              Permanently delete your account and all logged aircraft. This
+              action cannot be undone.
+            </span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -621,7 +746,7 @@
           </div>
         </div>
 
-        <button id="logout-btn" class="logout-btn">Log out</button>
+        <button id="logout-btn" class="clear-btn logout-btn">Log out</button>
         <button id="delete-btn" class="delete-btn">Delete Account</button>
       </div>
     </section>

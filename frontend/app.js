@@ -1,10 +1,13 @@
 let map;
 let markerGroup;
+let lightLayer, darkLayer;
 let currentFlightData = null;
 let currentMapAircraft = [];
 let pendingRegistration = null;
 let selectedMarker = null;
 let logbookSort = "desc";
+let logbookView = localStorage.getItem("logbookView") || "grid";
+let mapTheme = localStorage.getItem("mapTheme") || "dark";
 let logbookFilters = {
   search: "",
   airline: "",
@@ -13,7 +16,7 @@ let logbookFilters = {
   dateTo: "",
 };
 let markerSize = 32;
-let markerColour = "#f9d01a";
+let markerColour = localStorage.getItem("markerColour") || "#f9d01a";
 let selectedMarkerColour = "#e86c33";
 
 function debounce(func, wait) {
@@ -53,8 +56,8 @@ function createPlaneIcon(color) {
   });
 }
 
-const planeIcon = createPlaneIcon(markerColour);
-const planeIconSelected = createPlaneIcon(selectedMarkerColour);
+let planeIcon = createPlaneIcon(markerColour);
+let planeIconSelected = createPlaneIcon(selectedMarkerColour);
 
 const navViewMap = {
   "map-view": "nav-map",
@@ -90,6 +93,10 @@ function showView(viewId) {
 
     if (viewId === "statistics-view") {
       loadStatistics();
+    }
+
+    if (viewId === "settings-view") {
+      loadSettings();
     }
   }
 
@@ -387,7 +394,7 @@ function initMap() {
     setView: false,
   });
 
-  const lightLayer = L.tileLayer(
+  lightLayer = L.tileLayer(
     "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}",
     {
       minZoom: 0,
@@ -395,7 +402,7 @@ function initMap() {
       ext: "png",
     },
   );
-  const darkLayer = L.tileLayer(
+  darkLayer = L.tileLayer(
     "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}",
     {
       minZoom: 0,
@@ -404,9 +411,47 @@ function initMap() {
     },
   );
 
-  darkLayer.addTo(map);
+  (mapTheme === "light" ? lightLayer : darkLayer).addTo(map);
   markerGroup = L.layerGroup().addTo(map);
   map.on("click", closePanel);
+}
+
+function applyMapTheme(theme) {
+  if (!map || !lightLayer || !darkLayer) return;
+  if (theme === "light") {
+    if (map.hasLayer(darkLayer)) map.removeLayer(darkLayer);
+    if (!map.hasLayer(lightLayer)) lightLayer.addTo(map);
+  } else {
+    if (map.hasLayer(lightLayer)) map.removeLayer(lightLayer);
+    if (!map.hasLayer(darkLayer)) darkLayer.addTo(map);
+  }
+  mapTheme = theme;
+  localStorage.setItem("mapTheme", theme);
+}
+
+function applyMarkerColour(color) {
+  markerColour = color;
+  planeIcon = createPlaneIcon(markerColour);
+  planeIconSelected = createPlaneIcon(selectedMarkerColour);
+  localStorage.setItem("markerColour", color);
+  if (markerGroup) refreshFlights();
+}
+
+function loadSettings() {
+  const showAll = localStorage.getItem("showAllAircraft") === "true";
+  document.querySelector("#show-all-aircraft-toggle").checked = showAll;
+
+  document.querySelector("#map-theme-select").value =
+    localStorage.getItem("mapTheme") || "dark";
+
+  document.querySelector("#plane-icon-color").value =
+    localStorage.getItem("markerColour") || "#f9d01a";
+
+  document.querySelector("#altitude-unit-select").value =
+    localStorage.getItem("altitudeUnit") || "feet";
+
+  document.querySelector("#speed-unit-select").value =
+    localStorage.getItem("speedUnit") || "knots";
 }
 
 // Open flight details panel
@@ -494,7 +539,10 @@ async function searchMapAircraft() {
   }
 
   // global search
-  showMapSearchMessage("Not on current map, searching globally...", "error");
+  showMapSearchMessage(
+    "Not on current map, searching globally...",
+    "in-progress",
+  );
 
   try {
     const response = await authenticatedFetch(
@@ -719,8 +767,23 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
     const arrCode = data.arr_iata || "N/A";
     const depCountry = data.dep_country_code || "";
     const arrCountry = data.arr_country_code || "";
-    const altFt = alt > 0 ? `${Math.round(alt * 3.281)}ft` : "N/A";
-    const speedKts = data.speed ? `${Math.round(data.speed * 0.54)}kts` : "N/A";
+
+    const altUnit = localStorage.getItem("altitudeUnit") || "feet";
+    const altDisplay =
+      alt > 0
+        ? altUnit === "feet"
+          ? `${Math.round(alt * 3.281)}ft`
+          : `${Math.round(alt)}m`
+        : "N/A";
+
+    const speedUnit = localStorage.getItem("speedUnit") || "knots";
+    const speedDisplay = data.speed
+      ? speedUnit === "knots"
+        ? `${Math.round(data.speed * 0.54)}kts`
+        : speedUnit === "mph"
+          ? `${Math.round(data.speed * 0.621)}mph`
+          : `${Math.round(data.speed)}km/h`
+      : "N/A";
 
     panelHeader.innerText = `Flight ${callsign || "Details"}`;
     panelBody.innerHTML = `
@@ -753,11 +816,11 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
         </div>
         <div class="details-row">
           <span class="details-label">Barometric Altitude:</span>
-          <span class="details-value">${altFt}</span>
+          <span class="details-value">${altDisplay}</span>
         </div>
         <div class="details-row">
           <span class="details-label">Ground Speed:</span>
-          <span class="details-value">${speedKts}</span>
+          <span class="details-value">${speedDisplay}</span>
         </div>
       </div>
       <button id="log-aircraft-btn" class="blue-btn">
@@ -788,7 +851,13 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
       alt: alt,
     };
     panelHeader.innerText = `Flight ${callsign || "Details"}`;
-    const fallbackAltFt = alt > 0 ? `${Math.round(alt * 3.281)}ft` : "N/A";
+    const fallbackAltUnit = localStorage.getItem("altitudeUnit") || "feet";
+    const fallbackAltDisplay =
+      alt > 0
+        ? fallbackAltUnit === "feet"
+          ? `${Math.round(alt * 3.281)}ft`
+          : `${Math.round(alt)}m`
+        : "N/A";
     panelBody.innerHTML = `
       <div class="route-display">
         <span id="details-error-message">
@@ -802,7 +871,7 @@ async function getRichDetails(hex, lat, lon, alt, callsign) {
         </div>
         <div class="details-row">
           <span class="details-label">Barometric Altitude:</span>
-          <span class="details-value">${fallbackAltFt}</span>
+          <span class="details-value">${fallbackAltDisplay}</span>
         </div>
       </div>
       <button id="log-aircraft-btn" class="blue-btn">
@@ -890,6 +959,8 @@ function formatLogDate(timestamp) {
 function renderLogbookGrid(logs) {
   const grid = document.querySelector("#logbook-grid");
 
+  grid.classList.toggle("list-view", logbookView === "list");
+
   if (!logs.length) {
     grid.innerHTML = `<p class="logbook-empty">No aircraft logs found.</p>`;
     return;
@@ -918,6 +989,33 @@ function renderLogbookGrid(logs) {
           </div>`
         : `<div class="log-card-photo"><div class="photo-placeholder">No photo available</div></div>`;
 
+      if (logbookView === "list") {
+        return `
+        <div class="log-card log-card-row">
+          <div class="log-card-row-photo">${
+            log.air_photo_url
+              ? `<img src="${log.air_photo_url}" alt="Aircraft ${reg}" class="log-card-row-img" onerror="this.parentElement.innerHTML='<div class=\\'log-card-row-no-photo\\'></div>'" />`
+              : `<div class="log-card-row-no-photo"></div>`
+          }</div>
+          <div class="log-card-row-body">
+            <div class="log-card-row-main">
+              <span class="log-card-callsign">${callsign}</span>
+              <span class="log-card-airline log-card-row-airline">${airline}</span>
+              <span class="log-card-row-route">
+                <span class="log-card-row-iata">${dep}</span>
+                <span class="log-card-arrow">&rarr;</span>
+                <span class="log-card-row-iata">${arr}</span>
+              </span>
+              <span class="log-card-detail log-card-row-detail">${model} &middot; ${reg}</span>
+            </div>
+            <div class="log-card-row-meta">
+              <span class="log-card-date">${date}</span>
+              <button class="log-delete-btn" data-log-id="${log.log_id}">Delete</button>
+            </div>
+          </div>
+        </div>`;
+      }
+
       return `
       <div class="log-card">
         <div class="log-card-header">
@@ -945,6 +1043,18 @@ function renderLogbookGrid(logs) {
       deleteLog(logId);
     });
   });
+}
+
+function updateViewToggleBtn() {
+  const btn = document.querySelector("#view-toggle-btn");
+  if (!btn) return;
+  if (logbookView === "grid") {
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
+    btn.title = "Switch to list view";
+  } else {
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
+    btn.title = "Switch to grid view";
+  }
 }
 
 function toggleFiltersPanel() {
@@ -1470,6 +1580,13 @@ document.querySelector("#sort-toggle-btn").addEventListener("click", () => {
     logbookSort === "desc" ? "Viewing: Newest first" : "Viewing: Oldest first";
   loadLogbook();
 });
+document.querySelector("#view-toggle-btn").addEventListener("click", () => {
+  logbookView = logbookView === "grid" ? "list" : "grid";
+  localStorage.setItem("logbookView", logbookView);
+  updateViewToggleBtn();
+  loadLogbook();
+});
+updateViewToggleBtn();
 document
   .querySelector("#nav-stats")
   .addEventListener("click", () => showView("statistics-view"));
@@ -1560,6 +1677,45 @@ document
 document
   .querySelector("#export-logbook-btn")
   .addEventListener("click", exportLogbook);
+document
+  .querySelector("#export-logbook-settings-btn")
+  .addEventListener("click", exportLogbook);
+document
+  .querySelector("#logout-settings-btn")
+  .addEventListener("click", userLogout);
+document
+  .querySelector("#delete-account-settings-btn")
+  .addEventListener("click", deleteAccount);
+document
+  .querySelector("#change-password-settings-btn")
+  .addEventListener("click", () => showView("profile-view"));
+document
+  .querySelector("#show-all-aircraft-toggle")
+  .addEventListener("change", (e) => {
+    localStorage.setItem("showAllAircraft", e.target.checked);
+    if (map) refreshFlights();
+  });
+document
+  .querySelector("#map-theme-select")
+  .addEventListener("change", (e) => applyMapTheme(e.target.value));
+document.querySelector("#plane-icon-color").addEventListener("input", (e) => {
+  applyMarkerColour(e.target.value);
+});
+document.querySelector("#reset-colour").addEventListener("click", () => {
+  const defaultColour = "#f9d01a";
+  document.querySelector("#plane-icon-color").value = defaultColour;
+  applyMarkerColour(defaultColour);
+});
+document
+  .querySelector("#altitude-unit-select")
+  .addEventListener("change", (e) =>
+    localStorage.setItem("altitudeUnit", e.target.value),
+  );
+document
+  .querySelector("#speed-unit-select")
+  .addEventListener("change", (e) =>
+    localStorage.setItem("speedUnit", e.target.value),
+  );
 
 // Key handlers
 ["#login-id", "#login-pass"].forEach((id) => {

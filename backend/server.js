@@ -415,7 +415,6 @@ app.get("/api/search-flight/:query", authenticateToken, async (req, res) => {
       "https://opensky-network.org/api/states/all",
       {
         params: { icao24: hex },
-        auth: auth,
         timeout: 10000,
       },
     );
