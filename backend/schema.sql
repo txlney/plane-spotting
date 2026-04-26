@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS logs (
     log_longitude REAL,
     log_altitude INT,
     log_notes TEXT,
+    log_user_photo_url TEXT,
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (air_icao24_hex) REFERENCES aircraft(air_icao24_hex),
     FOREIGN KEY (log_dep_iata) REFERENCES airports(port_iata),

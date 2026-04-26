@@ -131,9 +131,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const pfpUrl = localStorage.getItem("pfpUrl") || null;
     initMap();
     document.querySelector("#main-nav").classList.remove("hidden");
-    document.querySelector("footer").classList.remove("hidden");
-    document.querySelector("#logged-in-message").innerText =
-      `Logged in as:  ${fName}`;
     updateNavPfp(pfpUrl);
     showView("map-view");
   } else {
@@ -336,10 +333,7 @@ async function userLogin() {
 
     initMap();
 
-    document.querySelector("footer").classList.remove("hidden");
     document.querySelector("#main-nav").classList.remove("hidden");
-    document.querySelector("#logged-in-message").innerText =
-      `Logged in as: ${result.user.fname}`;
     updateNavPfp(result.user.pfpUrl || null);
 
     showView("map-view");
@@ -352,7 +346,6 @@ async function userLogin() {
 function userLogout() {
   localStorage.clear();
   document.querySelector("#main-nav").classList.add("hidden");
-  document.querySelector("footer").classList.add("hidden");
   window.location.reload();
 }
 
@@ -364,16 +357,17 @@ function userLogout() {
 function initMap() {
   if (map) return;
 
-  // disabled map controls to mitigate issue of limited API calls
-  map = L.map("map", {
-    dragging: false,
-    tap: false,
-    keyboard: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
+  const mapOptions = {
+    dragging: true,
+    tap: true,
+    keyboard: true,
+    scrollWheelZoom: true,
+    doubleClickZoom: true,
     zoomControl: false,
-    touchZoom: false,
-  });
+    touchZoom: true,
+  };
+
+  map = L.map("map", mapOptions);
 
   map.on("locationfound", (e) => {
     console.log("User location found.");
@@ -416,6 +410,7 @@ function initMap() {
   map.on("click", closePanel);
 }
 
+// Change map layer based on user choice
 function applyMapTheme(theme) {
   if (!map || !lightLayer || !darkLayer) return;
   if (theme === "light") {
@@ -429,6 +424,7 @@ function applyMapTheme(theme) {
   localStorage.setItem("mapTheme", theme);
 }
 
+// Change marker colour based on user choice
 function applyMarkerColour(color) {
   markerColour = color;
   planeIcon = createPlaneIcon(markerColour);
@@ -437,6 +433,7 @@ function applyMarkerColour(color) {
   if (markerGroup) refreshFlights();
 }
 
+// Get user preferences
 function loadSettings() {
   const showAll = localStorage.getItem("showAllAircraft") === "true";
   document.querySelector("#show-all-aircraft-toggle").checked = showAll;
@@ -465,21 +462,6 @@ function closePanel() {
   if (selectedMarker) {
     selectedMarker.setIcon(planeIcon);
     selectedMarker = null;
-  }
-}
-
-// Toggle search feature for map (mobile only)
-function toggleMapSearch() {
-  if (window.innerWidth > 768) return;
-
-  const panel = document.querySelector("#map-search-panel");
-  const message = document.querySelector("#map-search-message");
-
-  panel.classList.toggle("hidden");
-  message.classList.add("hidden");
-
-  if (!panel.classList.contains("hidden")) {
-    document.querySelector("#map-search-input").focus();
   }
 }
 
@@ -922,10 +904,14 @@ async function confirmSpot() {
   }
   if (!currentFlightData) return;
 
+  const notes = prompt(
+    "Add notes about this spot (optional):\n\nExample: Spotted from Terminal 5 observation area",
+  );
+
   const spotData = {
     user_id: loggedInUserId,
     ...currentFlightData,
-    notes: "Spotted via live map", // Need to implement user noted rather than hard coded
+    notes: notes || "",
   };
 
   const response = await authenticatedFetch("/api/log-spot", {
@@ -942,6 +928,7 @@ async function confirmSpot() {
                     LOGBOOK
 ================================================ */
 
+// Format timestamps of logs
 function formatLogDate(timestamp) {
   if (!timestamp) return "—";
   const d = new Date(timestamp.replace(" ", "T"));
@@ -956,6 +943,7 @@ function formatLogDate(timestamp) {
   );
 }
 
+// Generate logbook log-cards
 function renderLogbookGrid(logs) {
   const grid = document.querySelector("#logbook-grid");
 
@@ -977,11 +965,13 @@ function renderLogbookGrid(logs) {
         [log.air_manufacturer, log.air_icao_type].filter(Boolean).join(" ") ||
         "—";
       const reg = log.air_reg || "—";
+      const notes = log.log_notes || "";
 
-      const photoHtml = log.air_photo_url
+      const photoSrc = log.log_user_photo_url || log.air_photo_url;
+      const photoHtml = photoSrc
         ? `<div class="log-card-photo">
             <img
-              src="${log.air_photo_url}"
+              src="${photoSrc}"
               alt="Aircraft ${reg}"
               class="log-card-img"
               onerror="this.parentElement.innerHTML='<div class=\\'photo-placeholder\\'>Photo unavailable</div>'"
@@ -989,12 +979,16 @@ function renderLogbookGrid(logs) {
           </div>`
         : `<div class="log-card-photo"><div class="photo-placeholder">No photo available</div></div>`;
 
+      const noteIndicator = notes
+        ? `<span class="note-indicator" title="Has notes">📝</span>`
+        : "";
+
       if (logbookView === "list") {
         return `
-        <div class="log-card log-card-row">
+        <div class="log-card log-card-row clickable" data-log-id="${log.log_id}">
           <div class="log-card-row-photo">${
-            log.air_photo_url
-              ? `<img src="${log.air_photo_url}" alt="Aircraft ${reg}" class="log-card-row-img" onerror="this.parentElement.innerHTML='<div class=\\'log-card-row-no-photo\\'></div>'" />`
+            log.log_user_photo_url || log.air_photo_url
+              ? `<img src="${log.log_user_photo_url || log.air_photo_url}" alt="Aircraft ${reg}" class="log-card-row-img" onerror="this.parentElement.innerHTML='<div class=\\'log-card-row-no-photo\\'></div>'" />`
               : `<div class="log-card-row-no-photo"></div>`
           }</div>
           <div class="log-card-row-body">
@@ -1017,10 +1011,13 @@ function renderLogbookGrid(logs) {
       }
 
       return `
-      <div class="log-card">
+      <div class="log-card clickable" data-log-id="${log.log_id}">
         <div class="log-card-header">
           <span class="log-card-date">${date}</span>
-          <span class="log-card-callsign">${callsign}</span>
+          <div class="log-card-header-right">
+            <span class="log-card-callsign">${callsign}</span>
+            ${noteIndicator}
+          </div>
         </div>
         <p class="log-card-airline">${airline}</p>
         <div class="log-card-route">
@@ -1037,14 +1034,185 @@ function renderLogbookGrid(logs) {
     })
     .join("");
 
+  document.querySelectorAll(".log-card.clickable").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.classList.contains("log-delete-btn")) {
+        return;
+      }
+      const logId = card.getAttribute("data-log-id");
+      openLogDetailModal(logId, logs);
+    });
+  });
+
   document.querySelectorAll(".log-delete-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const logId = e.target.getAttribute("data-log-id");
       deleteLog(logId);
     });
   });
 }
 
+// Open modal when log-card is clicked
+function openLogDetailModal(logId, logs) {
+  const log = logs.find((l) => l.log_id == logId);
+  if (!log) return;
+
+  const date = formatLogDate(log.log_timestamp);
+  const callsign = log.log_callsign || "Unknown";
+  const airline = log.airline_name || "—";
+  const dep = log.log_dep_iata || "—";
+  const depName = log.dep_name || "";
+  const arr = log.log_arr_iata || "—";
+  const arrName = log.arr_name || "";
+  const model =
+    [log.air_manufacturer, log.air_icao_type].filter(Boolean).join(" ") || "—";
+  const reg = log.air_reg || "—";
+  const notes = log.log_notes || "";
+
+  const modalPhotoSrc = log.log_user_photo_url || log.air_photo_url;
+  const photoHtml = modalPhotoSrc
+    ? `<div class="modal-photo">
+        <img
+          src="${modalPhotoSrc}"
+          alt="Aircraft ${reg}"
+          class="modal-photo-img"
+          onerror="this.parentElement.innerHTML='<div class=\\'modal-photo-placeholder\\'>Photo unavailable</div>'"
+        />
+      </div>`
+    : `<div class="modal-photo"><div class="modal-photo-placeholder">No photo available</div></div>`;
+
+  const notesHtml = notes
+    ? `<div class="modal-section">
+        <h3 class="modal-section-title">Notes</h3>
+        <p class="modal-notes-text">${notes}</p>
+      </div>`
+    : "";
+
+  const modalBody = document.querySelector("#modal-body");
+  modalBody.innerHTML = `
+    <h2 class="modal-title">${callsign}</h2>
+    ${photoHtml}
+    
+    <div class="modal-route">
+      <div class="modal-airport">
+        <span class="modal-airport-name">${depName}</span>
+        <span class="modal-iata">${dep}</span>
+      </div>
+      <span class="modal-arrow">→</span>
+      <div class="modal-airport">
+        <span class="modal-airport-name">${arrName}</span>
+        <span class="modal-iata">${arr}</span>
+      </div>
+    </div>
+    
+    <div class="modal-section">
+      <h3 class="modal-section-title">Flight Details</h3>
+      <div class="modal-details-grid">
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Airline:</span>
+          <span class="modal-detail-value">${airline}</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Aircraft:</span>
+          <span class="modal-detail-value">${model}</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Registration:</span>
+          <span class="modal-detail-value">${reg}</span>
+        </div>
+        <div class="modal-detail-row">
+          <span class="modal-detail-label">Spotted:</span>
+          <span class="modal-detail-value">${date}</span>
+        </div>
+      </div>
+    </div>
+    
+    ${notesHtml}
+    
+    <div class="modal-actions">
+      <div class="modal-photo-actions">
+        <label for="user-photo-file-input" class="modal-change-photo-btn blue-btn">
+          Change Photo
+        </label>
+        <input
+          type="file"
+          id="user-photo-file-input"
+          class="hidden"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+        />
+        ${log.log_user_photo_url ? `<button class="modal-reset-photo-btn clear-btn">Reset Photo</button>` : ""}
+      </div>
+      <button class="modal-delete-btn log-delete-btn" data-log-id="${log.log_id}">
+        Delete Log
+      </button>
+    </div>
+  `;
+
+  const modal = document.querySelector("#log-detail-modal");
+  modal.classList.remove("hidden");
+  modal.scrollTop = 0;
+  document.body.style.overflow = "hidden";
+
+  document.querySelector(".modal-delete-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const logId = e.target.getAttribute("data-log-id");
+    deleteLog(logId);
+    closeLogDetailModal();
+  });
+
+  document
+    .querySelector("#user-photo-file-input")
+    .addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      e.target.value = "";
+
+      const photoUrl = await uploadAircraftPhoto(logId, file);
+      if (photoUrl) {
+        const modalPhotoEl = modalBody.querySelector(".modal-photo");
+        if (modalPhotoEl) {
+          modalPhotoEl.innerHTML = `<img src="${photoUrl}" alt="Aircraft ${reg}" class="modal-photo-img" onerror="this.parentElement.innerHTML='<div class=\\'modal-photo-placeholder\\'>Photo unavailable</div>'" />`;
+        }
+        if (!modalBody.querySelector(".modal-reset-photo-btn")) {
+          const photoActions = modalBody.querySelector(".modal-photo-actions");
+          const btn = document.createElement("button");
+          btn.className = "modal-reset-photo-btn clear-btn";
+          btn.textContent = "Reset Photo";
+          photoActions.appendChild(btn);
+          btn.addEventListener("click", handleReset);
+        }
+        loadLogbook();
+      }
+    });
+
+  async function handleReset() {
+    const ok = await resetAircraftPhoto(logId);
+    if (ok) {
+      const modalPhotoEl = modalBody.querySelector(".modal-photo");
+      if (modalPhotoEl) {
+        const fallbackSrc = log.air_photo_url;
+        modalPhotoEl.innerHTML = fallbackSrc
+          ? `<img src="${fallbackSrc}" alt="Aircraft ${reg}" class="modal-photo-img" onerror="this.parentElement.innerHTML='<div class=\\'modal-photo-placeholder\\'>Photo unavailable</div>'" />`
+          : `<div class="modal-photo-placeholder">No photo available</div>`;
+      }
+      modalBody.querySelector(".modal-reset-photo-btn")?.remove();
+      loadLogbook();
+    }
+  }
+
+  modalBody
+    .querySelector(".modal-reset-photo-btn")
+    ?.addEventListener("click", handleReset);
+}
+
+// Close modal
+function closeLogDetailModal() {
+  document.querySelector("#log-detail-modal").classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+// Switch between grid and list view
 function updateViewToggleBtn() {
   const btn = document.querySelector("#view-toggle-btn");
   if (!btn) return;
@@ -1057,11 +1225,13 @@ function updateViewToggleBtn() {
   }
 }
 
+// Toggle filters dropdown
 function toggleFiltersPanel() {
   const panel = document.querySelector("#filters-panel");
   panel.classList.toggle("open");
 }
 
+// Fetch user's log data to generate logbook
 async function loadLogbook() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1095,6 +1265,7 @@ async function loadLogbook() {
   }
 }
 
+// Delete log
 async function deleteLog(logId) {
   if (!confirm("Are you sure you want to delete this log?")) return;
 
@@ -1111,6 +1282,7 @@ async function deleteLog(logId) {
   }
 }
 
+// Retrieve filter choices
 async function loadFilterOptions() {
   try {
     const airlinesRes = await authenticatedFetch(
@@ -1147,6 +1319,7 @@ async function loadFilterOptions() {
   }
 }
 
+// Export logbook to .csv file
 async function exportLogbook() {
   try {
     const response = await authenticatedFetch("/api/logbook/export");
@@ -1172,6 +1345,45 @@ async function exportLogbook() {
   }
 }
 
+// Reset log photo back to the aircraft table default
+async function resetAircraftPhoto(logId) {
+  try {
+    const response = await authenticatedFetch(`/api/log/${logId}/photo`, {
+      method: "DELETE",
+    });
+    if (!response) return false;
+    return response.ok;
+  } catch {
+    alert("Failed to reset photo. Please try again.");
+    return false;
+  }
+}
+
+// Upload user photo for a specific log entry
+async function uploadAircraftPhoto(logId, file) {
+  const formData = new FormData();
+  formData.append("photo", file);
+
+  try {
+    const response = await authenticatedFetch(`/api/log/${logId}/photo`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response) return null;
+    const result = await response.json();
+    if (response.ok) {
+      return result.photoUrl;
+    } else {
+      alert(result.error || "Failed to upload photo.");
+      return null;
+    }
+  } catch {
+    alert("Failed to upload photo. Please try again.");
+    return null;
+  }
+}
+
+// Apply filtes to logbook
 function applyFilters() {
   logbookFilters.search = document
     .querySelector("#logbook-search-input")
@@ -1186,6 +1398,7 @@ function applyFilters() {
   loadLogbook();
 }
 
+// Clear filter choices
 function clearFilters() {
   logbookFilters = {
     search: "",
@@ -1210,11 +1423,13 @@ function clearFilters() {
 
 let originalUsername = "";
 
+// Switch from profile editing mode to viewing mode
 function showProfileDetails() {
   document.querySelector("#profile-details-section").classList.remove("hidden");
   document.querySelector("#profile-edit-section").classList.add("hidden");
 }
 
+// Switch from profile viewing mode to editing mode
 function showProfileEdit() {
   document.querySelector("#profile-details-section").classList.add("hidden");
   document.querySelector("#profile-edit-section").classList.remove("hidden");
@@ -1222,6 +1437,7 @@ function showProfileEdit() {
   document.querySelector("#profile-edit-status").className = "";
 }
 
+// Fetch profile information for profile page
 async function loadProfile() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1286,6 +1502,7 @@ async function loadProfile() {
   }
 }
 
+// Profile picture upload
 async function uploadPfp(file) {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1320,6 +1537,7 @@ async function uploadPfp(file) {
   }
 }
 
+// Profile picture deletion
 async function deletePfp() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1348,6 +1566,7 @@ async function deletePfp() {
   }
 }
 
+// Save changes to profile information
 async function saveProfile() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1411,6 +1630,7 @@ async function saveProfile() {
   }
 }
 
+// Change account password
 async function changePassword() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1463,6 +1683,7 @@ async function changePassword() {
   }
 }
 
+// Delete account
 async function deleteAccount() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1495,6 +1716,7 @@ async function deleteAccount() {
                     STATISTICS
 ================================================ */
 
+// Fetch user log data to generate statistics
 async function loadStatistics() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
@@ -1523,6 +1745,7 @@ async function loadStatistics() {
   }
 }
 
+// Generate 12-month heatmap grid
 function renderMonthGrid(byMonth) {
   const monthMap = {};
   for (const { month, count } of byMonth) {
@@ -1565,9 +1788,6 @@ document
 document
   .querySelector("#nav-logbook")
   .addEventListener("click", () => showView("logbook-view"));
-document
-  .querySelector("#map-search-toggle")
-  .addEventListener("click", toggleMapSearch);
 document
   .querySelector("#map-search-btn")
   .addEventListener("click", searchMapAircraft);
@@ -1716,8 +1936,19 @@ document
   .addEventListener("change", (e) =>
     localStorage.setItem("speedUnit", e.target.value),
   );
+document
+  .querySelector("#modal-close-btn")
+  .addEventListener("click", closeLogDetailModal);
+document.querySelector("#log-detail-modal").addEventListener("click", (e) => {
+  if (e.target.id === "log-detail-modal") {
+    closeLogDetailModal();
+  }
+});
 
-// Key handlers
+/* ================================================
+                  KEY HANDLERS
+================================================ */
+
 ["#login-id", "#login-pass"].forEach((id) => {
   document.querySelector(id).addEventListener("keydown", (e) => {
     if (e.key === "Enter") userLogin();
@@ -1743,5 +1974,11 @@ document.querySelector("#map-search-input").addEventListener("keydown", (e) => {
 
   if (e.key === "Escape") {
     toggleMapSearch();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeLogDetailModal();
   }
 });

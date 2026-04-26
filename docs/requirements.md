@@ -60,7 +60,7 @@ The system will follow a clear client-server architecture, with separation betwe
 
 ### 5.2: Components
 
-- **Frontend: React**
+- **Frontend: Vanilla JS**
   - I've decided to build the frontend using vanilla JS rather than a framework. This keeps the app lightweight with fewer additional dependencies. Vanilla JS provides all the interactivity required for the live map and user interactions whilst keeping the codebase more straightforward and easier to debug.
 - **Backend: Node.js and Express**
   - The backend will use Node.js and Express to handle the real-time API calls efficiently. It's a suitable framework for processing the live flight data.
@@ -85,7 +85,7 @@ The system will follow a clear client-server architecture, with separation betwe
 
 ## 7. Acceptance Criteria
 
-Each major feature can be considered as complete if they match the following criteria:
+Each major feature can be considered as sufficiently complete if they match the following criteria:
 
 - **FR1:** Live Aircraft Map
   - The app loads and displays a live map of aircraft within 3 seconds on a standard connection.

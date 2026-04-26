@@ -22,7 +22,14 @@ const db = new sqlite3.Database(path.join(__dirname, "spotting.db"));
 const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 
 const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const pfpUploadsDir = path.join(__dirname, "uploads/pfp");
+if (!fs.existsSync(pfpUploadsDir))
+  fs.mkdirSync(pfpUploadsDir, { recursive: true });
+
+const aircraftUploadsDir = path.join(__dirname, "uploads/aircraft");
+if (!fs.existsSync(aircraftUploadsDir))
+  fs.mkdirSync(aircraftUploadsDir, { recursive: true });
 
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -33,10 +40,33 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 const pfpStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
+  destination: (req, file, cb) => cb(null, pfpUploadsDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `pfp_${req.user.userId}_${Date.now()}${ext}`);
+  },
+});
+
+const aircraftStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, aircraftUploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(
+      null,
+      `aircraft_${req.user.userId}_${req.params.logId}_${Date.now()}${ext}`,
+    );
+  },
+});
+
+const aircraftUpload = multer({
+  storage: aircraftStorage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, WebP, or GIF images are allowed."));
+    }
   },
 });
 
@@ -583,7 +613,9 @@ app.get("/api/logbook", authenticateToken, (req, res) => {
       a.air_photo_url,
       al.airline_name,
       dep_p.port_name AS dep_name,
-      arr_p.port_name AS arr_name
+      arr_p.port_name AS arr_name,
+      l.log_notes,
+      l.log_user_photo_url
     FROM logs l
     LEFT JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
     LEFT JOIN airlines al ON a.air_airline_icao = al.airline_icao
@@ -771,6 +803,86 @@ app.get("/api/logbook/export", authenticateToken, (req, res) => {
     );
     res.send(csv);
   });
+});
+
+// Upload aircraft photo for a log entry
+app.post("/api/log/:logId/photo", authenticateToken, (req, res) => {
+  const logId = req.params.logId;
+  const userId = req.user.userId;
+
+  aircraftUpload.single("photo")(req, res, async (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(400)
+          .json({ error: "File too large. Maximum size is 2MB." });
+      }
+      return res.status(400).json({ error: err.message || "Upload failed." });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "No file provided." });
+    }
+
+    try {
+      const log = await dbGet(
+        "SELECT log_user_photo_url FROM logs WHERE log_id = ? AND user_id = ?",
+        [logId, userId],
+      );
+      if (!log) {
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ error: "Log entry not found." });
+      }
+
+      if (log.log_user_photo_url) {
+        const oldFilePath = path.join(
+          aircraftUploadsDir,
+          path.basename(log.log_user_photo_url),
+        );
+        if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
+      }
+    } catch {}
+
+    const photoUrl = `/uploads/aircraft/${req.file.filename}`;
+
+    db.run(
+      "UPDATE logs SET log_user_photo_url = ? WHERE log_id = ? AND user_id = ?",
+      [photoUrl, logId, userId],
+      (error) => {
+        if (error)
+          return res.status(500).json({ error: "Failed to save photo." });
+        res.json({ message: "Photo uploaded.", photoUrl });
+      },
+    );
+  });
+});
+
+// Reset user-uploaded photo for a log entry
+app.delete("/api/log/:logId/photo", authenticateToken, async (req, res) => {
+  const logId = req.params.logId;
+  const userId = req.user.userId;
+
+  try {
+    const log = await dbGet(
+      "SELECT log_user_photo_url FROM logs WHERE log_id = ? AND user_id = ?",
+      [logId, userId],
+    );
+    if (!log) return res.status(404).json({ error: "Log entry not found." });
+    if (!log.log_user_photo_url)
+      return res.status(404).json({ error: "No user photo to remove." });
+
+    const filePath = path.join(aircraftUploadsDir, path.basename(log.log_user_photo_url));
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch {}
+
+  db.run(
+    "UPDATE logs SET log_user_photo_url = NULL WHERE log_id = ? AND user_id = ?",
+    [logId, userId],
+    (error) => {
+      if (error)
+        return res.status(500).json({ error: "Failed to reset photo." });
+      res.json({ message: "Photo reset." });
+    },
+  );
 });
 
 // Register user into database & hash password
@@ -1081,7 +1193,10 @@ app.delete("/api/user/:userId", authenticateToken, async (req, res) => {
       [userId],
     );
     if (user?.user_pfp_url) {
-      const filePath = path.join(uploadsDir, path.basename(user.user_pfp_url));
+      const filePath = path.join(
+        pfpUploadsDir,
+        path.basename(user.user_pfp_url),
+      );
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
   } catch {}
@@ -1118,7 +1233,7 @@ app.post("/api/user/:userId/pfp", authenticateToken, (req, res) => {
     }
 
     const userId = req.params.userId;
-    const pfpUrl = `/uploads/${req.file.filename}`;
+    const pfpUrl = `/uploads/pfp/${req.file.filename}`;
 
     try {
       const user = await dbGet(
@@ -1127,7 +1242,7 @@ app.post("/api/user/:userId/pfp", authenticateToken, (req, res) => {
       );
       if (user?.user_pfp_url) {
         const oldFilePath = path.join(
-          uploadsDir,
+          pfpUploadsDir,
           path.basename(user.user_pfp_url),
         );
         if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
@@ -1165,7 +1280,10 @@ app.delete("/api/user/:userId/pfp", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "No profile picture to remove." });
     }
 
-    const oldFilePath = path.join(uploadsDir, path.basename(user.user_pfp_url));
+    const oldFilePath = path.join(
+      pfpUploadsDir,
+      path.basename(user.user_pfp_url),
+    );
     if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
 
     db.run(
