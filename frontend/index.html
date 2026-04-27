@@ -350,31 +350,53 @@
 
     <section id="statistics-view" class="hidden">
       <div class="statistics-container">
-        <div class="statistics-header">
-          <h1 id="user-stats-msg">My Statistics</h1>
-        </div>
-        <div class="stats-cards-grid">
-          <div class="stat-card">
-            <span class="stat-value" id="stat-total-logs">—</span>
-            <span class="stat-label">Total Spots</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-value" id="stat-unique-aircraft">—</span>
-            <span class="stat-label">Unique Aircraft</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-value stat-value-text" id="stat-top-airline"
-              >—</span
-            >
-            <span class="stat-label">Most Spotted Airline</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-value" id="stat-top-type">—</span>
-            <span class="stat-label">Most Spotted Type</span>
+        <div class="stats-section">
+          <h2 class="stats-section-title">Quick Stats</h2>
+          <div class="quick-stats-grid">
+            <div class="quick-stat-card">
+              <span class="quick-stat-value" id="stat-total-logs">—</span>
+              <span class="quick-stat-label">Total Spots</span>
+            </div>
+            <div class="quick-stat-card">
+              <span class="quick-stat-value" id="stat-unique-aircraft">—</span>
+              <span class="quick-stat-label">Unique Aircraft</span>
+            </div>
+            <div class="quick-stat-card">
+              <span class="quick-stat-value" id="stat-avg-altitude">—</span>
+              <span class="quick-stat-label">Average Altitude</span>
+            </div>
           </div>
         </div>
-        <div class="stats-section-card">
-          <h2 class="stats-section-title">Your Previous 12 Months</h2>
+
+        <div class="stats-section">
+          <h2 class="stats-section-title">Personal Records</h2>
+          <div class="records-list">
+            <div class="record-item">
+              <span class="record-label">Most Spotted Airline:</span>
+              <span class="record-value" id="record-top-airline">—</span>
+            </div>
+            <div class="record-item">
+              <span class="record-label">Most Spotted Type:</span>
+              <span class="record-value" id="record-top-type">—</span>
+            </div>
+            <div class="record-item">
+              <span class="record-label">Repeat Spotter:</span>
+              <span class="record-value" id="record-repeat-aircraft">—</span>
+            </div>
+            <div class="record-item">
+              <span class="record-label">Busiest Day:</span>
+              <span class="record-value" id="record-busiest-day">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <h2 class="stats-section-title">Top Airlines</h2>
+          <div id="airline-leaderboard" class="airline-leaderboard"></div>
+        </div>
+
+        <div class="stats-section">
+          <h2 class="stats-section-title">Activity - Last 12 Months</h2>
           <div id="stats-month-grid"></div>
         </div>
       </div>

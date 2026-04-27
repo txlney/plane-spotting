@@ -870,7 +870,10 @@ app.delete("/api/log/:logId/photo", authenticateToken, async (req, res) => {
     if (!log.log_user_photo_url)
       return res.status(404).json({ error: "No user photo to remove." });
 
-    const filePath = path.join(aircraftUploadsDir, path.basename(log.log_user_photo_url));
+    const filePath = path.join(
+      aircraftUploadsDir,
+      path.basename(log.log_user_photo_url),
+    );
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   } catch {}
 
@@ -998,37 +1001,111 @@ app.get("/api/stats", authenticateToken, async (req, res) => {
   const userId = req.user.userId;
 
   try {
-    const [totalLogs, uniqueAircraft, topAirline, topType, byMonth] =
-      await Promise.all([
-        dbGet("SELECT COUNT(*) as count FROM logs WHERE user_id = ?", [userId]),
-        dbGet(
-          "SELECT COUNT(DISTINCT air_icao24_hex) as count FROM logs WHERE user_id = ?",
-          [userId],
-        ),
-        dbGet(
-          `SELECT al.airline_name, COUNT(*) as count
+    const [
+      totalLogs,
+      uniqueAircraft,
+      topAirline,
+      topType,
+      byMonth,
+      topAirlines,
+      busiestDay,
+      mostSpottedAircraft,
+      avgAltitude,
+      totalDistance,
+      currentStreak,
+      longestStreak,
+    ] = await Promise.all([
+      // total logs
+      dbGet("SELECT COUNT(*) as count FROM logs WHERE user_id = ?", [userId]),
+
+      // total unique aircraft
+      dbGet(
+        "SELECT COUNT(DISTINCT air_icao24_hex) as count FROM logs WHERE user_id = ?",
+        [userId],
+      ),
+
+      // most spotted airline
+      dbGet(
+        `SELECT al.airline_name, COUNT(*) as count
           FROM logs l
           JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
           JOIN airlines al ON a.air_airline_icao = al.airline_icao
           WHERE l.user_id = ? AND al.airline_name IS NOT NULL
           GROUP BY al.airline_name ORDER BY count DESC LIMIT 1`,
-          [userId],
-        ),
-        dbGet(
-          `SELECT a.air_icao_type, COUNT(*) as count
+        [userId],
+      ),
+
+      // most spotted aircraft type
+      dbGet(
+        `SELECT a.air_icao_type, COUNT(*) as count
           FROM logs l
           JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
           WHERE l.user_id = ? AND a.air_icao_type IS NOT NULL
           GROUP BY a.air_icao_type ORDER BY count DESC LIMIT 1`,
-          [userId],
-        ),
-        dbAll(
-          `SELECT strftime('%Y-%m', log_timestamp) as month, COUNT(*) as count
+        [userId],
+      ),
+
+      // 12-month heatmap
+      dbAll(
+        `SELECT strftime('%Y-%m', log_timestamp) as month, COUNT(*) as count
           FROM logs WHERE user_id = ?
           GROUP BY month ORDER BY month ASC`,
-          [userId],
-        ),
-      ]);
+        [userId],
+      ),
+
+      // top 5 airlines
+      dbAll(
+        `SELECT al.airline_name, COUNT(*) as count
+          FROM logs l
+          JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+          JOIN airlines al ON a.air_airline_icao = al.airline_icao
+          WHERE l.user_id = ? AND al.airline_name IS NOT NULL
+          GROUP BY al.airline_name
+          ORDER BY count DESC
+          LIMIT 5`,
+        [userId],
+      ),
+
+      // busiest day
+      dbGet(
+        `SELECT DATE(log_timestamp) as day, COUNT(*) as count
+          FROM logs WHERE user_id = ?
+          GROUP BY day
+          ORDER BY count DESC
+          LIMIT 1`,
+        [userId],
+      ),
+
+      // most spotted aircraft
+      dbGet(
+        `SELECT a.air_reg, COUNT(*) as count
+          FROM logs l
+          JOIN aircraft a ON l.air_icao24_hex = a.air_icao24_hex
+          WHERE l.user_id = ? AND a.air_reg IS NOT NULL
+          GROUP BY a.air_reg
+          HAVING count > 1
+          ORDER BY count DESC
+          LIMIT 1`,
+        [userId],
+      ),
+
+      // average altitude
+      dbGet(
+        `SELECT AVG(log_altitude) as avg_alt
+        FROM logs
+        WHERE user_id = ? AND log_altitude IS NOT NULL`,
+        [userId],
+      ),
+
+      // total distance
+      Promise.resolve({ total_distance: 0 }),
+
+      // current streak
+      Promise.resolve({ current_streak: 0 }),
+
+      // longest streak
+      Promise.resolve({ longest_streak: 0 }),
+    ]);
 
     res.json({
       total_logs: totalLogs?.count ?? 0,
@@ -1036,6 +1113,13 @@ app.get("/api/stats", authenticateToken, async (req, res) => {
       most_common_airline: topAirline?.airline_name ?? null,
       most_common_type: topType?.air_icao_type ?? null,
       by_month: byMonth,
+      top_airlines: topAirlines || [],
+      busiest_day: busiestDay || null,
+      most_spotted_aircraft: mostSpottedAircraft || null,
+      avg_altitude: avgAltitude?.avg_alt ?? null,
+      total_distance: 0,
+      current_streak: 0,
+      longest_streak: 0,
     });
   } catch (error) {
     console.error("Stats error:", error.message);

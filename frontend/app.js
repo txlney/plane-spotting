@@ -1016,7 +1016,6 @@ function renderLogbookGrid(logs) {
           <span class="log-card-date">${date}</span>
           <div class="log-card-header-right">
             <span class="log-card-callsign">${callsign}</span>
-            ${noteIndicator}
           </div>
         </div>
         <p class="log-card-airline">${airline}</p>
@@ -1721,28 +1720,87 @@ async function loadStatistics() {
   const userId = localStorage.getItem("userId");
   if (!userId) return;
 
-  const userFName = localStorage.getItem("userFName");
-  document.querySelector("#user-stats-msg").innerText =
-    `${userFName}'s Statistics`;
-
   try {
     const response = await authenticatedFetch("/api/stats");
     if (!response) return;
     const data = await response.json();
 
+    // quick stats
     document.querySelector("#stat-total-logs").innerText = data.total_logs;
     document.querySelector("#stat-unique-aircraft").innerText =
       data.unique_aircraft;
-    document.querySelector("#stat-top-airline").innerText =
-      data.most_common_airline ?? "—";
-    document.querySelector("#stat-top-type").innerText =
-      data.most_common_type ?? "—";
 
+    const avgAlt = data.avg_altitude
+      ? `${Math.round(data.avg_altitude * 3.281).toLocaleString()} ft`
+      : "—";
+    document.querySelector("#stat-avg-altitude").innerText = avgAlt;
+
+    // personal records
+    document.querySelector("#record-top-airline").innerText =
+      data.most_common_airline
+        ? `${data.most_common_airline} (${data.top_airlines[0]?.count || 0})`
+        : "—";
+
+    document.querySelector("#record-top-type").innerText =
+      data.most_common_type || "—";
+
+    const repeatAircraft = data.most_spotted_aircraft
+      ? `${data.most_spotted_aircraft.air_reg} (${data.most_spotted_aircraft.count} times)`
+      : "No repeat sightings yet";
+    document.querySelector("#record-repeat-aircraft").innerText =
+      repeatAircraft;
+
+    const busiestDay = data.busiest_day
+      ? `${new Date(data.busiest_day.day).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })} (${data.busiest_day.count} logs)`
+      : "—";
+    document.querySelector("#record-busiest-day").innerText = busiestDay;
+
+    // top airlines
+    renderAirlineLeaderboard(data.top_airlines, data.total_logs);
+
+    // 12-month heatmap
     renderMonthGrid(data.by_month);
   } catch {
     document.querySelector("#stats-month-grid").innerText =
       "Failed to load statistics.";
   }
+}
+
+// Generate top-5 airline leaderboard
+function renderAirlineLeaderboard(airlines, totalLogs) {
+  const container = document.querySelector("#airline-leaderboard");
+
+  if (!airlines.length) {
+    container.innerHTML = `<p class="no-data">No airline data yet.</p>`;
+    return;
+  }
+
+  container.innerHTML = airlines
+    .map((airline, index) => {
+      const percentage = ((airline.count / totalLogs) * 100).toFixed(1);
+      const barWidth = percentage;
+
+      return `
+      <div class="leaderboard-item">
+        <div class="leaderboard-rank">${index + 1}</div>
+        <div class="leaderboard-details">
+          <div class="leaderboard-name">${airline.airline_name}</div>
+          <div class="leaderboard-bar-container">
+            <div class="leaderboard-bar" style="width: ${barWidth}%"></div>
+          </div>
+        </div>
+        <div class="leaderboard-stats">
+          <span class="leaderboard-percentage">${percentage}%</span>
+          <span class="leaderboard-count">${airline.count}</span>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
 }
 
 // Generate 12-month heatmap grid
